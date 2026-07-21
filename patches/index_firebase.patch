@@ -1,0 +1,32 @@
+--- index.html
++++ index.html
+@@ -19,6 +19,10 @@
+ 
+     <!-- Chart.js CDN -->
+     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
++    
++    <!-- Firebase Compat SDKs -->
++    <script src="https://www.gstatic.com/firebasejs/10.1.0/firebase-app-compat.js"></script>
++    <script src="https://www.gstatic.com/firebasejs/10.1.0/firebase-auth-compat.js"></script>
++    <script src="https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore-compat.js"></script>
+   </head>
+   <body>
+@@ -52,6 +56,9 @@
+ 
+             <button type="submit" class="btn btn-primary btn-block">Masuk <i class="fa-solid fa-right-to-bracket"></i></button>
+ 
++            <div class="auth-divider"><span>ATAU</span></div>
++            <button type="button" id="google-login-btn" class="btn btn-block" style="background-color: #fff; color: #333; border: 1px solid #ccc;"><i class="fa-brands fa-google" style="color: #DB4437;"></i> Masuk dengan Google</button>
++
+             <p class="auth-toggle-text">Belum punya akun? <a href="#" id="go-to-register">Daftar sekarang</a></p>
+           </form>
+ 
+@@ -345,7 +352,7 @@
+     <!-- Toast Notification Container -->
+     <div id="toast-container" class="toast-container"></div>
+ 
+-    <script src="js/db.js"></script>
++    <script src="js/firebase-db.js"></script>
+     <script src="js/app.js"></script>
+   </body>
+ </html>

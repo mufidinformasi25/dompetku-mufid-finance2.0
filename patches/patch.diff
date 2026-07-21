@@ -1,0 +1,46 @@
+*** Begin Patch
+*** Update File: index.html
+@@ -107,6 +107,14 @@
+             </div>
+           </div>
+           
++          <div class="kpi-card savings-card">
++            <div class="kpi-icon" style="color: #00d2ff"><i class="fa-solid fa-piggy-bank"></i></div>
++            <div class="kpi-content">
++              <h3>Total Tabungan</h3>
++              <p class="kpi-value" id="total-savings">Rp 0</p>
++            </div>
++          </div>
++          
+           <div class="kpi-card income-card">
+             <div class="kpi-icon"><i class="fa-solid fa-circle-arrow-down"></i></div>
+             <div class="kpi-content">
+@@ -148,6 +156,7 @@
+                     <select id="tx-type" required>
+                       <option value="expense" selected>Pengeluaran (Keluar)</option>
+                       <option value="income">Pemasukan (Masuk)</option>
++                      <option value="saving">Menabung (Simpan)</option>
+                     </select>
+                   </div>
+                   <div class="form-group flex-1">
+@@ -171,6 +180,10 @@
+                         <option value="Belanja">Belanja</option>
+                         <option value="Investasi & Tabungan">Investasi & Tabungan</option>
+                         <option value="Lain-lain">Lain-lain</option>
++                      </optgroup>
++                      <!-- Saving Categories -->
++                      <optgroup label="Tabungan">
++                        <option value="Tabungan">Tabungan Umum</option>
+                       </optgroup>
+                       <!-- Income Categories -->
+                       <optgroup label="Sumber Pemasukan">
+@@ -216,6 +229,7 @@
+                 <select id="filter-type">
+                   <option value="all">Semua Jenis</option>
+                   <option value="income">Pemasukan</option>
+                   <option value="expense">Pengeluaran</option>
++                  <option value="saving">Tabungan</option>
+                 </select>
+                 <select id="filter-category">
+                   <option value="all">Semua Kategori</option>
+*** End Patch

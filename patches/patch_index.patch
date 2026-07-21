@@ -1,0 +1,46 @@
+﻿--- index.html
++++ index.html
+@@ -107,6 +107,9 @@
+       <div class="header-profile">
+         <span class="user-welcome">Halo, <strong id="username-display">User</strong></span>
++        <button id="daily-report-btn" class="btn btn-secondary btn-sm">
++          Laporan Harian <i class="fa-solid fa-calendar-day"></i>
++        </button>
+         <button id="logout-btn" class="btn btn-danger-outline btn-sm">
+           Keluar <i class="fa-solid fa-right-from-bracket"></i>
+@@ -300,6 +303,34 @@
+ 
+     </main>
+ 
++    <!-- Modal Laporan Harian Detail -->
++    <div id="daily-report-modal" class="modal hidden">
++      <div class="modal-content glass-card">
++        <div class="modal-header">
++          <h2><i class="fa-solid fa-calendar-day"></i> Laporan Harian Detail</h2>
++          <button id="close-daily-report" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
++        </div>
++        <div class="modal-body">
++          <div class="daily-report-controls" style="margin-bottom: 1rem;">
++            <label for="report-month">Pilih Bulan:</label>
++            <input type="month" id="report-month" style="padding: 0.4rem; border-radius: 6px; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.1);">
++          </div>
++          <div class="table-responsive">
++            <table class="history-table">
++              <thead>
++                <tr>
++                  <th>Tanggal</th>
++                  <th>Total Pemasukan</th>
++                  <th>Total Pengeluaran</th>
++                  <th>Selisih (Net)</th>
++                </tr>
++              </thead>
++              <tbody id="daily-report-rows">
++              </tbody>
++            </table>
++          </div>
++        </div>
++      </div>
++    </div>
++
+     <!-- Footer -->
+     <footer class="app-footer">

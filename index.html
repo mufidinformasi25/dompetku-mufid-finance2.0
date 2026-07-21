@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dompetku - Kelola Keuangan Pribadi Premium</title>
+    <meta name="description" content="Aplikasi pengelolaan keuangan pribadi premium dengan fitur lengkap: pencatatan pemasukan/pengeluaran, database lokal IndexedDB aman, batas anggaran dinamis, dan visualisasi grafik interaktif." />
+
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <!-- Style Sheet -->
+    <link rel="stylesheet" href="css/style.css" />
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Firebase SDK (compat v9) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  </head>
+  <body>
+    <!-- Background Blobs for Visual Aesthetics -->
+    <div class="bg-blob blob-1"></div>
+    <div class="bg-blob blob-2"></div>
+    <div class="bg-blob blob-3"></div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- 1. AUTH CONTAINER (LOGIN / REGISTER) -->
+    <div id="auth-container" class="auth-container">
+      <div class="auth-card">
+        <div class="auth-header">
+          <div class="logo">
+            <i class="fa-solid fa-wallet-gradient fa-wallet"></i>
+            <span>DompetKu</span>
+          </div>
+          <p id="auth-subtitle">Kelola keuangan harian secara cerdas, aman, dan mudah</p>
+        </div>
+
+        <!-- Login Form -->
+        <form id="login-form" class="auth-form active">
+          <h2>Selamat Datang Kembali</h2>
+          <p class="form-desc">Silakan masuk ke akun keuangan Anda</p>
+
+          <div class="input-group">
+            <label for="login-username"><i class="fa-solid fa-user"></i> Username</label>
+            <input type="text" id="login-username" required placeholder="Masukkan username Anda" />
+          </div>
+
+          <div class="input-group">
+            <label for="login-password"><i class="fa-solid fa-lock"></i> Password</label>
+            <div class="password-input-wrapper">
+              <input type="password" id="login-password" required placeholder="Masukkan password Anda" />
+              <i class="fa-solid fa-eye toggle-password" id="toggle-login-password"></i>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block">Masuk <i class="fa-solid fa-right-to-bracket"></i></button>
+
+          <div class="auth-divider"><span>atau</span></div>
+
+          <button type="button" id="google-login-btn" class="btn btn-google btn-block">
+            <svg width="18" height="18" viewBox="0 0 48 48" style="margin-right: 10px; flex-shrink:0;"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.29-8.16 2.29-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+            Masuk dengan Google
+          </button>
+
+          <p class="auth-toggle-text">Belum punya akun? <a href="#" id="go-to-register">Daftar sekarang</a></p>
+        </form>
+
+        <!-- Register Form -->
+        <form id="register-form" class="auth-form">
+          <h2>Buat Akun Baru</h2>
+          <p class="form-desc">Mulai kelola keuangan Anda dengan lebih baik</p>
+
+          <div class="input-group">
+            <label for="register-username"><i class="fa-solid fa-user"></i> Username</label>
+            <input type="text" id="register-username" required placeholder="Pilih username baru" />
+          </div>
+
+          <div class="input-group">
+            <label for="register-password"><i class="fa-solid fa-lock"></i> Password</label>
+            <div class="password-input-wrapper">
+              <input type="password" id="register-password" required placeholder="Pilih password minimal 6 karakter" />
+              <i class="fa-solid fa-eye toggle-password" id="toggle-register-password"></i>
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label for="register-confirm-password"><i class="fa-solid fa-lock"></i> Konfirmasi Password</label>
+            <div class="password-input-wrapper">
+              <input type="password" id="register-confirm-password" required placeholder="Konfirmasi password baru" />
+              <i class="fa-solid fa-eye toggle-password" id="toggle-register-confirm-password"></i>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-secondary btn-block">Daftar Akun <i class="fa-solid fa-user-plus"></i></button>
+
+          <p class="auth-toggle-text">Sudah punya akun? <a href="#" id="go-to-login">Masuk di sini</a></p>
+        </form>
+      </div>
+    </div>
+
+    <!-- 2. MAIN APPLICATION CONTAINER -->
+    <div id="app-container" class="app-container hidden">
+      <!-- Header -->
+      <header class="app-header">
+        <div class="header-brand">
+          <i class="fa-solid fa-wallet brand-icon"></i>
+          <h1>DompetKu</h1>
+        </div>
+        <div class="header-profile">
+          <span class="user-welcome">Halo, <strong id="username-display">User</strong></span>
+          <button id="daily-report-btn" class="btn btn-secondary btn-sm">Laporan Harian <i class="fa-solid fa-calendar-day"></i></button>
+          <button id="logout-btn" class="btn btn-danger-outline btn-sm">Keluar <i class="fa-solid fa-power-off"></i></button>
+        </div>
+      </header>
+
+      <!-- Main Dashboard Grid -->
+      <main class="dashboard-grid">
+        <!-- Row 1: KPI Cards -->
+        <section class="kpi-section">
+          <div class="kpi-card balance-card">
+            <div class="kpi-icon"><i class="fa-solid fa-scale-balanced"></i></div>
+            <div class="kpi-content">
+              <h3>Total Saldo</h3>
+              <p class="kpi-value" id="total-balance">Rp 0</p>
+            </div>
+          </div>
+          <div class="kpi-card savings-card">
+            <div class="kpi-icon" style="color: #00d2ff"><i class="fa-solid fa-piggy-bank"></i></div>
+            <div class="kpi-content">
+              <h3>Total Tabungan</h3>
+              <p class="kpi-value" id="total-savings">Rp 0</p>
+            </div>
+          </div>
+
+          <div class="kpi-card income-card">
+            <div class="kpi-icon"><i class="fa-solid fa-circle-arrow-down"></i></div>
+            <div class="kpi-content">
+              <h3>Pemasukan Hari Ini</h3>
+              <p class="kpi-value" id="today-income">Rp 0</p>
+            </div>
+          </div>
+
+          <div class="kpi-card expense-card">
+            <div class="kpi-icon"><i class="fa-solid fa-circle-arrow-up"></i></div>
+            <div class="kpi-content">
+              <h3>Pengeluaran Hari Ini</h3>
+              <p class="kpi-value" id="today-expense">Rp 0</p>
+            </div>
+          </div>
+
+          <div class="kpi-card limits-card">
+            <div class="kpi-icon"><i class="fa-solid fa-shield-halved"></i></div>
+            <div class="kpi-content">
+              <h3>Sisa Batasan Hari Ini</h3>
+              <p class="kpi-value" id="today-limits-summary">Rp 0</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Row 2: Interactive Columns -->
+        <div class="dashboard-columns">
+          <!-- Left Column: Forms & Controls -->
+          <div class="dashboard-col left-col">
+            <!-- Card 1: Add Transaction -->
+            <div class="card glass-card">
+              <div class="card-header">
+                <h2><i class="fa-solid fa-circle-plus"></i> Tambah Transaksi</h2>
+              </div>
+              <form id="transaction-form" class="card-body">
+                <div class="form-row">
+                  <div class="form-group flex-1">
+                    <label for="tx-type">Jenis Transaksi</label>
+                    <select id="tx-type" required>
+                      <option value="expense" selected>Pengeluaran (Keluar)</option>
+                      <option value="income">Pemasukan (Masuk)</option>
+                      <option value="saving">Menabung (Simpan)</option>
+                    </select>
+                  </div>
+                  <div class="form-group flex-1">
+                    <label for="tx-amount">Jumlah Nominal (Rp)</label>
+                    <input type="number" id="tx-amount" min="1" required placeholder="Contoh: 50000" />
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group flex-1">
+                    <label for="tx-category">Kategori Kebutuhan</label>
+                    <select id="tx-category" required>
+                      <option value="" disabled selected>Pilih Kategori</option>
+                      <!-- Expense Categories -->
+                      <optgroup label="Pengeluaran / Kebutuhan">
+                        <option value="Makanan & Minuman">Makanan & Minuman</option>
+                        <option value="Transportasi">Transportasi</option>
+                        <option value="Tempat Tinggal & Tagihan">Tempat Tinggal & Tagihan</option>
+                        <option value="Hiburan & Gaya Hidup">Hiburan & Gaya Hidup</option>
+                        <option value="Kesehatan">Kesehatan</option>
+                        <option value="Pendidikan">Pendidikan</option>
+                        <option value="Belanja">Belanja</option>
+                        <option value="Investasi & Tabungan">Investasi & Tabungan</option>
+                        <option value="Lain-lain">Lain-lain</option>
+                      </optgroup>
+                      <!-- Saving Categories -->
+                      <optgroup label="Tabungan">
+                        <option value="Tabungan Umum">Tabungan Umum</option>
+                      </optgroup>
+                      <!-- Income Categories -->
+                      <optgroup label="Sumber Pemasukan">
+                        <option value="Gaji / Upah">Gaji / Upah</option>
+                        <option value="Hasil Usaha / Bisnis">Hasil Usaha / Bisnis</option>
+                        <option value="Investasi">Pendapatan Investasi</option>
+                        <option value="Pemberian / Hibah">Pemberian / Hibah</option>
+                        <option value="Pemasukan Lain-lain">Pemasukan Lain-lain</option>
+                      </optgroup>
+                    </select>
+                  </div>
+                  <div class="form-group flex-1">
+                    <label for="tx-date">Tanggal</label>
+                    <input type="date" id="tx-date" required />
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="tx-desc">Keterangan / Keperluan</label>
+                  <input type="text" id="tx-desc" placeholder="Contoh: Beli nasi goreng malam" />
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">Simpan Transaksi <i class="fa-solid fa-floppy-disk"></i></button>
+              </form>
+            </div>
+
+            <!-- Card 2: Set Budget Limit -->
+            <div class="card glass-card">
+              <div class="card-header">
+                <h2><i class="fa-solid fa-sliders"></i> Atur Batasan Pengeluaran Harian</h2>
+              </div>
+              <form id="budget-form" class="card-body">
+                <p class="card-subtitle">Tetapkan batas pengeluaran harian maksimum untuk setiap kategori agar pengeluaran Anda terkontrol.</p>
+
+                <div class="form-row">
+                  <div class="form-group flex-1">
+                    <label for="budget-category">Kategori Pengeluaran</label>
+                    <select id="budget-category" required>
+                      <option value="" disabled selected>Pilih Kategori</option>
+                      <option value="Makanan & Minuman">Makanan & Minuman</option>
+                      <option value="Transportasi">Transportasi</option>
+                      <option value="Tempat Tinggal & Tagihan">Tempat Tinggal & Tagihan</option>
+                      <option value="Hiburan & Gaya Hidup">Hiburan & Gaya Hidup</option>
+                      <option value="Kesehatan">Kesehatan</option>
+                      <option value="Pendidikan">Pendidikan</option>
+                      <option value="Belanja">Belanja</option>
+                      <option value="Investasi & Tabungan">Investasi & Tabungan</option>
+                      <option value="Lain-lain">Lain-lain</option>
+                    </select>
+                  </div>
+                  <div class="form-group flex-1">
+                    <label for="budget-amount">Batas Harian (Rp)</label>
+                    <input type="number" id="budget-amount" min="0" required placeholder="Contoh: 100000" />
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-secondary btn-block">Terapkan Batasan <i class="fa-solid fa-circle-check"></i></button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Right Column: Visualizations & Limits -->
+          <div class="dashboard-col right-col">
+            <!-- Card 3: Visual Analytics -->
+            <div class="card glass-card">
+              <div class="card-header">
+                <h2><i class="fa-solid fa-chart-pie"></i> Visualisasi & Grafik</h2>
+              </div>
+              <div class="card-body chart-container">
+                <div class="chart-tabs">
+                  <button class="chart-tab active" data-chart="category">Kategori</button>
+                  <button class="chart-tab" data-chart="trend">Tren Harian</button>
+                </div>
+                <div class="chart-wrapper">
+                  <canvas id="expensesChart"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card 4: Active Limits Status -->
+            <div class="card glass-card">
+              <div class="card-header">
+                <h2><i class="fa-solid fa-triangle-exclamation"></i> Status Batasan Pengeluaran Hari Ini</h2>
+              </div>
+              <div class="card-body scrollable-card-body" id="active-budgets-list">
+                <!-- Dynamically populated budget progress bars -->
+                <p class="placeholder-text">Belum ada batasan pengeluaran harian yang diatur.</p>
+              </div>
+            </div>
+
+            <!-- Card 5: Add Saving Goal -->
+            <div class="card glass-card">
+              <div class="card-header">
+                <h2><i class="fa-solid fa-bullseye"></i> Buat Target Menabung</h2>
+              </div>
+              <form id="saving-goal-form" class="card-body">
+                <p class="card-subtitle">Tetapkan tujuan menabung agar Anda tahu apa yang sedang ditabung.</p>
+
+                <div class="form-row">
+                  <div class="form-group" style="flex: 0 0 56px">
+                    <label for="goal-emoji">Ikon</label>
+                    <input type="text" id="goal-emoji" maxlength="2" placeholder="🎯" style="text-align: center; font-size: 1.3rem; padding: 0.5rem" />
+                  </div>
+                  <div class="form-group flex-1">
+                    <label for="goal-name"><i class="fa-solid fa-tag"></i> Nama Target</label>
+                    <input type="text" id="goal-name" required placeholder="Contoh: Beli Laptop, Liburan Bali" />
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="goal-amount"><i class="fa-solid fa-coins"></i> Nominal Target (Rp)</label>
+                  <input type="number" id="goal-amount" min="1" required placeholder="Contoh: 5000000" />
+                </div>
+
+                <div class="form-group">
+                  <label for="goal-desc"><i class="fa-solid fa-pen"></i> Catatan (opsional)</label>
+                  <input type="text" id="goal-desc" placeholder="Contoh: Nabung untuk laptop kerja" />
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">Simpan Target <i class="fa-solid fa-floppy-disk"></i></button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 3: Transaction History -->
+        <section class="history-section card glass-card">
+          <div class="card-header history-header">
+            <h2><i class="fa-solid fa-clock-rotate-left"></i> Riwayat Transaksi</h2>
+
+            <!-- Controls -->
+            <div class="history-controls">
+              <div class="filter-group">
+                <select id="filter-type">
+                  <option value="all">Semua Jenis</option>
+                  <option value="income">Pemasukan</option>
+                  <option value="expense">Pengeluaran</option>
+                  <option value="saving">Tabungan</option>
+                </select>
+                <select id="filter-category">
+                  <option value="all">Semua Kategori</option>
+                  <!-- Filled dynamically via JS -->
+                </select>
+                <input type="text" id="search-desc" placeholder="Cari keterangan..." />
+              </div>
+              <button id="export-csv-btn" class="btn btn-success-outline btn-sm">Ekspor CSV <i class="fa-solid fa-file-csv"></i></button>
+            </div>
+          </div>
+
+          <div class="card-body table-responsive">
+            <table class="history-table">
+              <thead>
+                <tr>
+                  <th>Tanggal</th>
+                  <th>Kategori</th>
+                  <th>Keterangan</th>
+                  <th>Jenis</th>
+                  <th>Jumlah</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="transaction-rows">
+                <!-- Transaction items will be rendered here dynamically -->
+                <tr>
+                  <td colspan="6" class="placeholder-text text-center">Belum ada transaksi tercatat. Mulai tambahkan transaksi di atas!</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Row 4: Saving Goals -->
+        <section class="saving-goals-section card glass-card">
+          <div class="card-header">
+            <h2><i class="fa-solid fa-piggy-bank"></i> Target Menabung Saya</h2>
+            <span class="goals-summary" id="goals-summary-text"></span>
+          </div>
+          <div class="card-body">
+            <div id="saving-goals-grid" class="saving-goals-grid">
+              <!-- Dynamically populated saving goal cards -->
+              <p class="placeholder-text" id="goals-placeholder">Belum ada target menabung. Buat target pertamamu di atas!</p>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <!-- Modal Laporan Harian Detail -->
+      <div id="daily-report-modal" class="modal hidden">
+        <div class="modal-content glass-card">
+          <div class="modal-header">
+            <h2><i class="fa-solid fa-calendar-day"></i> Laporan Harian Detail</h2>
+            <button id="close-daily-report" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="daily-report-controls" style="margin-bottom: 1rem">
+              <label for="report-month" style="margin-right: 0.5rem">Pilih Bulan:</label>
+              <input type="month" id="report-month" style="padding: 0.4rem; border-radius: 6px; background: rgba(255, 255, 255, 0.1); color: white; border: 1px solid rgba(255, 255, 255, 0.1); font-family: inherit" />
+            </div>
+            <div class="table-responsive" style="max-height: 60vh; overflow-y: auto">
+              <table class="history-table">
+                <thead>
+                  <tr>
+                    <th>Tanggal</th>
+                    <th>Total Pemasukan</th>
+                    <th>Total Pengeluaran</th>
+                    <th>Selisih (Net)</th>
+                  </tr>
+                </thead>
+                <tbody id="daily-report-rows"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <footer class="app-footer">
+        <p>&copy; 2026 DompetKu Finance. Database tersimpan secara lokal dan aman di browser Anda.</p>
+      </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/firebase-db.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>
