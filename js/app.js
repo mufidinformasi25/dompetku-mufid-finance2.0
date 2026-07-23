@@ -137,8 +137,8 @@ document.addEventListener('DOMContentLoaded', () => {
       await initApp(); // Initialize data and UI for authenticated user
     } else {
       currentUser = null;
-      // If not authenticated, redirect to root index.html (which then redirects to html/login.html)
-      window.location.href = '../index.html';
+      // If not authenticated, redirect to index.html
+      window.location.href = 'index.html';
       // No need to hide appContainer here, as the page will redirect
       // No need to show authContainer here, as this is home.html
     }
@@ -148,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
   logoutBtn.addEventListener('click', async (e) => {
     e.preventDefault();
     await firebase.auth().signOut();
-    window.location.href = '../index.html'; // Redirect to root index.html after logout
+    window.location.href = 'index.html'; // Redirect to index.html after logout
   });
 
   // KPI functions (Key Performance Indicators)
@@ -249,7 +249,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     filteredTransactions.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(tx => {
-      const row = transactionRows.insertRow();
+      const row = transactionRows.insertCell();
       row.insertCell().textContent = tx.date;
       row.insertCell().textContent = tx.category;
       row.insertCell().textContent = tx.description;
@@ -550,13 +550,13 @@ document.addEventListener('DOMContentLoaded', () => {
           legend: {
             position: 'right',
             labels: {
-              color: '#fff',
+              color: 'var(--text-primary)',
             }
           },
           title: {
             display: true,
             text: 'Distribusi Pengeluaran berdasarkan Kategori',
-            color: '#fff',
+            color: 'var(--text-primary)',
           }
         }
       }
@@ -589,16 +589,16 @@ document.addEventListener('DOMContentLoaded', () => {
           {
             label: 'Pemasukan',
             data: incomes,
-            borderColor: '#28a745',
-            backgroundColor: 'rgba(40, 167, 69, 0.2)',
+            borderColor: 'var(--color-success)',
+            backgroundColor: 'rgba(46, 204, 113, 0.2)',
             fill: true,
             tension: 0.3
           },
           {
             label: 'Pengeluaran',
             data: expenses,
-            borderColor: '#dc3545',
-            backgroundColor: 'rgba(220, 53, 69, 0.2)',
+            borderColor: 'var(--color-danger)',
+            backgroundColor: 'rgba(231, 76, 60, 0.2)',
             fill: true,
             tension: 0.3
           }
@@ -611,33 +611,33 @@ document.addEventListener('DOMContentLoaded', () => {
           legend: {
             position: 'top',
             labels: {
-              color: '#fff',
+              color: 'var(--text-primary)',
             }
           },
           title: {
             display: true,
             text: 'Tren Pemasukan dan Pengeluaran Bulanan',
-            color: '#fff',
+            color: 'var(--text-primary)',
           }
         },
         scales: {
           x: {
             ticks: {
-              color: '#fff',
+              color: 'var(--text-secondary)',
             },
             grid: {
-              color: 'rgba(255, 255, 255, 0.1)',
+              color: 'rgba(0, 0, 0, 0.1)',
             }
           },
           y: {
             ticks: {
-              color: '#fff',
+              color: 'var(--text-secondary)',
               callback: function(value) {
                 return formatRupiah(value);
               }
             },
             grid: {
-              color: 'rgba(255, 255, 255, 0.1)',
+              color: 'rgba(0, 0, 0, 0.1)',
             }
           }
         }
@@ -769,7 +769,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const dates = Object.keys(dailyData).sort((a, b) => b.localeCompare(a)); // Descending
 
     if (dates.length === 0) {
-      dailyReportRows.innerHTML = '<tr><td colspan="4" class="text-center placeholder-text">Tidak ada data untuk bulan ini.</td></tr>';
+      dailyReportRows.innerHTML = '<tr><td colspan="4" class="placeholder-text text-center">Tidak ada data untuk bulan ini.</td></tr>';
       return;
     }
 

@@ -121,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Redirect if already authenticated
   auth.onAuthStateChanged((user) => {
     if (user) {
-      window.location.href = 'home.html'; // This should be relative to current html/login.html
+      window.location.href = 'home.html';
     } else {
       // Ensure auth container is visible if not authenticated
       if (authContainer) {
