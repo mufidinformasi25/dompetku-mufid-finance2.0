@@ -1,16 +1,11 @@
-﻿/**
+/**
  * app.js - Personal Finance Manager Application Logic
  * Integrates UI interaction, IndexedDB data operations, Chart.js, and budget checking.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
   // DOM Elements
-  const authContainer = document.getElementById('auth-container');
   const appContainer = document.getElementById('app-container');
-  const loginForm = document.getElementById('login-form');
-  const registerForm = document.getElementById('register-form');
-  const goToRegister = document.getElementById('go-to-register');
-  const goToLogin = document.getElementById('go-to-login');
 
   const usernameDisplay = document.getElementById('username-display');
   const logoutBtn = document.getElementById('logout-btn');
@@ -93,9 +88,13 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${year}-${month}-${day}`;
   }
 
-  // Helper: Toast Notifications
+  // Helper: Toast Notifications (This function needs to be available in home.html)
   function showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
+    if (!container) {
+      console.warn("Toast container not found. Cannot display toast.");
+      return;
+    }
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
 
@@ -129,752 +128,560 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Check Auth State via Firebase onAuthStateChanged
-  function setupAuthListener() {
-    // FinanceDB.onAuthStateChanged wraps Firebase auth observer
-    FinanceDB.onAuthStateChanged(async (firebaseUser) => {
-      if (firebaseUser) {
-        currentUser = {
-          id: firebaseUser.uid,
-          username: firebaseUser.displayName || firebaseUser.email.split('@')[0],
-          email: firebaseUser.email
-        };
-        usernameDisplay.textContent = currentUser.username;
-        authContainer.classList.add('hidden');
-        appContainer.classList.remove('hidden');
-        await initializeDashboard();
-      } else {
-        currentUser = null;
-        authContainer.classList.remove('hidden');
-        appContainer.classList.add('hidden');
-        // Reset state when logged out
-        transactions = [];
-        budgets = [];
-        savingGoals = [];
-        if (myChart) { myChart.destroy(); myChart = null; }
-      }
-    });
-  }
-
-  // Initialize Dashboard Data
-  async function initializeDashboard() {
-    if (!currentUser) return;
-
-    // Load initial default date
-    txDate.value = getLocalDateString();
-
-    // Populate dynamic Category list in History Filters
-    populateFilterCategories();
-
-    try {
-      // Fetch transactions, budgets, and saving goals
-      transactions = await FinanceDB.getTransactions(currentUser.id);
-      budgets = await FinanceDB.getBudgets(currentUser.id);
-      savingGoals = await FinanceDB.getSavingGoals(currentUser.id);
-
-      // Render components
-      renderDashboardUI();
-    } catch (err) {
-      console.error(err);
-      showToast('Gagal memuat data dari database.', 'danger');
+  // Authentication Listener for Home Page (redirects to index.html if not authenticated)
+  firebase.auth().onAuthStateChanged(async (user) => {
+    if (user) {
+      currentUser = user;
+      usernameDisplay.textContent = `Halo, ${currentUser.displayName || currentUser.email}`;
+      appContainer.classList.remove('hidden'); // Ensure app container is visible
+      await initApp(); // Initialize data and UI for authenticated user
+    } else {
+      currentUser = null;
+      // If not authenticated, redirect to root index.html (which then redirects to html/login.html)
+      window.location.href = '../index.html';
+      // No need to hide appContainer here, as the page will redirect
+      // No need to show authContainer here, as this is home.html
     }
-  }
+  });
 
-  // Populate Filter Categories in History Controls
-  function populateFilterCategories() {
-    filterCategory.innerHTML = '<option value="all">Semua Kategori</option>';
-    categoriesList.forEach(cat => {
-      const option = document.createElement('option');
-      option.value = cat;
-      option.textContent = cat;
-      filterCategory.appendChild(option);
-    });
-  }
+  // Logout button event listener
+  logoutBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    await firebase.auth().signOut();
+    window.location.href = '../index.html'; // Redirect to root index.html after logout
+  });
 
-  // Render All UI Elements based on state
-  function renderDashboardUI() {
-    const todayStr = getLocalDateString();
+  // KPI functions (Key Performance Indicators)
+  async function updateKPIs() {
+    const today = getLocalDateString();
+    let totalIncome = 0;
+    let totalExpense = 0;
+    let currentBalance = 0;
 
-    // 1. Calculate KPI Metrics
-    let balance = 0;
-    let todayIncome = 0;
-    let todayExpense = 0;
-    let totalSavings = 0;
+    // Calculate current balance
+    if (transactions.length > 0) {
+      currentBalance = transactions.reduce((acc, tx) => {
+        if (tx.type === 'income') return acc + tx.amount;
+        if (tx.type === 'expense') return acc - tx.amount;
+        return acc;
+      }, 0);
+    }
 
-    transactions.forEach(tx => {
-      const amount = parseFloat(tx.amount);
-      if (tx.type === 'income') {
-        balance += amount;
-        if (tx.date === todayStr) {
-          todayIncome += amount;
-        }
-      } else if (tx.type === 'saving') {
-        balance -= amount;
-        totalSavings += amount;
-        if (tx.date === todayStr) {
-          todayExpense += amount;
-        }
-      } else {
-        balance -= amount;
-        if (tx.date === todayStr) {
-          todayExpense += amount;
-        }
-      }
-    });
+    // Calculate today's income and expense
+    const todayTransactions = transactions.filter(tx => tx.date === today);
+    todayIncome = todayTransactions.filter(tx => tx.type === 'income').reduce((sum, tx) => sum + tx.amount, 0);
+    todayExpense = todayTransactions.filter(tx => tx.type === 'expense').reduce((sum, tx) => sum + tx.amount, 0);
 
-    totalBalanceEl.textContent = formatRupiah(balance);
+    totalBalanceEl.textContent = formatRupiah(currentBalance);
     todayIncomeEl.textContent = formatRupiah(todayIncome);
     todayExpenseEl.textContent = formatRupiah(todayExpense);
 
-    // Update total savings KPI
-    const totalSavingsEl = document.getElementById('total-savings');
-    if (totalSavingsEl) totalSavingsEl.textContent = formatRupiah(totalSavings);
+    // Check budget limits for today
+    let limitsSummary = '';
+    const todayExpensesByCategory = todayTransactions.filter(tx => tx.type === 'expense').reduce((acc, tx) => {
+      acc[tx.category] = (acc[tx.category] || 0) + tx.amount;
+      return acc;
+    }, {});
 
-    // 2. Render Active Budget List & Calculate Budget Limits Summary
-    activeBudgetsList.innerHTML = '';
+    budgets.forEach(budget => {
+      if (budget.type === 'daily' && todayExpensesByCategory[budget.category] > budget.amount) {
+        limitsSummary += `<p class="text-danger">Batas harian '${budget.category}' terlampaui!</p>`;
+      }
+    });
 
-    let totalLimitSpent = 0;
-    let totalLimitBudget = 0;
-
-    if (budgets.length === 0) {
-      activeBudgetsList.innerHTML = '<p class="placeholder-text">Belum ada batasan pengeluaran harian yang diatur.</p>';
-      todayLimitsSummaryEl.textContent = formatRupiah(0);
-    } else {
-      budgets.forEach(budget => {
-        // Calculate total expense in this category today
-        const spentToday = transactions
-          .filter(tx => tx.type === 'expense' && tx.category === budget.category && tx.date === todayStr)
-          .reduce((sum, tx) => sum + tx.amount, 0);
-
-        totalLimitSpent += spentToday;
-        totalLimitBudget += budget.limitAmount;
-
-        const ratio = budget.limitAmount > 0 ? (spentToday / budget.limitAmount) : 0;
-        const percent = Math.min(Math.round(ratio * 100), 999);
-
-        let progressClass = 'progress-safe';
-        let alertClass = 'alert-safe';
-        let alertIcon = '<i class="fa-solid fa-circle-check"></i>';
-        let alertMessage = `Sisa batas aman: ${formatRupiah(Math.max(0, budget.limitAmount - spentToday))}`;
-
-        if (ratio > 1.0) {
-          progressClass = 'progress-exceeded';
-          alertClass = 'alert-exceeded';
-          alertIcon = '<i class="fa-solid fa-circle-exclamation"></i>';
-          alertMessage = `MELEBIHI BATAS! Lebih ${formatRupiah(spentToday - budget.limitAmount)}`;
-        } else if (ratio > 0.7) {
-          progressClass = 'progress-warning';
-          alertClass = 'alert-warning';
-          alertIcon = '<i class="fa-solid fa-triangle-exclamation"></i>';
-          alertMessage = `Awas! Sisa batas tipis: ${formatRupiah(budget.limitAmount - spentToday)}`;
-        }
-
-        const budgetItem = document.createElement('div');
-        budgetItem.className = 'budget-status-item';
-        budgetItem.innerHTML = `
-          <div class="budget-meta">
-            <span class="budget-category-title">${budget.category}</span>
-            <span class="budget-amount-ratio">${formatRupiah(spentToday)} / ${formatRupiah(budget.limitAmount)}</span>
-          </div>
-          <div class="progress-bar-container">
-            <div class="progress-bar-fill ${progressClass}" style="width: ${Math.min(percent, 100)}%"></div>
-          </div>
-          <div class="budget-alert-text ${alertClass}">
-            ${alertIcon} ${alertMessage} (${percent}% terpakai)
-            <button class="btn-danger-sm btn-xs delete-budget-btn" data-id="${budget.id}" style="padding: 1px 4px; font-size: 0.7rem; margin-left: auto; display: inline-flex; height: 16px; align-items: center; justify-content: center;">Hapus Batasan</button>
-          </div>
-        `;
-        activeBudgetsList.appendChild(budgetItem);
-      });
-
-      // KPI card "Sisa Batasan Hari Ini"
-      const remainingLimitTotal = Math.max(0, totalLimitBudget - totalLimitSpent);
-      todayLimitsSummaryEl.textContent = formatRupiah(remainingLimitTotal);
-
-      // Bind delete budget buttons
-      document.querySelectorAll('.delete-budget-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-          e.stopPropagation();
-          const budgetId = parseInt(btn.getAttribute('data-id'));
-          if (confirm('Apakah Anda yakin ingin menghapus batasan pengeluaran untuk kategori ini?')) {
-            try {
-              await FinanceDB.deleteBudget(budgetId);
-              showToast('Batasan pengeluaran berhasil dihapus.', 'success');
-              budgets = await FinanceDB.getBudgets(currentUser.id);
-              renderDashboardUI();
-            } catch (err) {
-              showToast('Gagal menghapus batasan.', 'danger');
-            }
-          }
-        });
-      });
-    }
-
-    // 3. Render Transaction History Table
-    renderTransactionTable();
-
-    // 4. Render Charts
-    renderCharts();
-
-    // 5. Render Saving Goals
-    renderSavingGoals();
+    todayLimitsSummaryEl.innerHTML = limitsSummary || '<p class="text-info">Batas harian terjaga.</p>';
   }
 
-  // Render Filtered Transactions to the Table
+  // --- Transaction Logic ---
+  async function addOrUpdateTransaction(tx) {
+    if (!currentUser) return;
+    try {
+      if (tx.id) {
+        await FinanceDB.updateTransaction(currentUser.uid, tx.id, tx);
+        showToast('Transaksi berhasil diperbarui.', 'success');
+      } else {
+        await FinanceDB.addTransaction(currentUser.uid, tx);
+        showToast('Transaksi berhasil ditambahkan.', 'success');
+      }
+      await loadAllData();
+      resetTransactionForm();
+    } catch (error) {
+      console.error("Error adding/updating transaction:", error);
+      showToast('Gagal menyimpan transaksi.', 'danger');
+    }
+  }
+
+  async function deleteTransaction(txId) {
+    if (!currentUser) return;
+    if (!confirm('Anda yakin ingin menghapus transaksi ini?')) return;
+    try {
+      await FinanceDB.deleteTransaction(currentUser.uid, txId);
+      showToast('Transaksi berhasil dihapus.', 'success');
+      await loadAllData();
+    } catch (error) {
+      console.error("Error deleting transaction:", error);
+      showToast('Gagal menghapus transaksi.', 'danger');
+    }
+  }
+
   function renderTransactionTable() {
+    if (!transactions.length) {
+      transactionRows.innerHTML = '<tr><td colspan="6" class="placeholder-text text-center">Belum ada transaksi tercatat. Mulai tambahkan transaksi di atas!</td></tr>';
+      return;
+    }
+
     const fType = filterType.value;
     const fCategory = filterCategory.value;
     const sQuery = searchDesc.value.toLowerCase().trim();
 
-    // Filter transactions
-    const filteredTxs = transactions.filter(tx => {
+    const filteredTransactions = transactions.filter(tx => {
       const matchType = (fType === 'all') || (tx.type === fType);
       const matchCategory = (fCategory === 'all') || (tx.category === fCategory);
       const matchDesc = !sQuery || (tx.description.toLowerCase().includes(sQuery)) || (tx.category.toLowerCase().includes(sQuery));
       return matchType && matchCategory && matchDesc;
     });
 
-    transactionRows.innerHTML = '';
+    transactionRows.innerHTML = ''; // Clear existing rows
 
-    if (filteredTxs.length === 0) {
-      transactionRows.innerHTML = `
-        <tr>
-          <td colspan="6" class="placeholder-text text-center">Tidak ada transaksi yang cocok dengan filter.</td>
-        </tr>
-      `;
+    if (filteredTransactions.length === 0) {
+      transactionRows.innerHTML = '<tr><td colspan="6" class="placeholder-text text-center">Tidak ada transaksi yang cocok.</td></tr>';
       return;
     }
 
-    filteredTxs.forEach(tx => {
-      const tr = document.createElement('tr');
-      const formattedDate = new Date(tx.date).toLocaleDateString('id-ID', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric'
-      });
-      const badgeClass = tx.type === 'income' ? 'badge-income' : 'badge-expense';
-      const valClass = tx.type === 'income' ? 'val-income' : 'val-expense';
-      const typeLabel = tx.type === 'income' ? 'Masuk' : 'Keluar';
-      const prefix = tx.type === 'income' ? '+' : '-';
+    filteredTransactions.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(tx => {
+      const row = transactionRows.insertRow();
+      row.insertCell().textContent = tx.date;
+      row.insertCell().textContent = tx.category;
+      row.insertCell().textContent = tx.description;
+      row.insertCell().textContent = tx.type === 'income' ? 'Pemasukan' : 'Pengeluaran';
+      row.insertCell().textContent = formatRupiah(tx.amount);
 
-      tr.innerHTML = `
-        <td>${formattedDate}</td>
-        <td><strong>${tx.category}</strong></td>
-        <td>${tx.description || '-'}</td>
-        <td><span class="badge ${badgeClass}">${typeLabel}</span></td>
-        <td class="${valClass}">${prefix} ${formatRupiah(tx.amount)}</td>
-        <td>
-          <button class="btn btn-danger-sm delete-tx-btn" data-id="${tx.id}">
-            <i class="fa-solid fa-trash"></i> Hapus
-          </button>
-        </td>
-      `;
-      transactionRows.appendChild(tr);
-    });
+      const actionsCell = row.insertCell();
+      const editBtn = document.createElement('button');
+      editBtn.className = 'btn btn-sm btn-action btn-edit';
+      editBtn.innerHTML = '<i class="fa-solid fa-edit"></i>';
+      editBtn.onclick = () => editTransaction(tx);
+      actionsCell.appendChild(editBtn);
 
-    // Bind Delete Button Listeners
-    document.querySelectorAll('.delete-tx-btn').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        const txId = parseInt(btn.getAttribute('data-id'));
-        if (confirm('Apakah Anda yakin ingin menghapus transaksi ini?')) {
-          try {
-            await FinanceDB.deleteTransaction(txId);
-            showToast('Transaksi berhasil dihapus.', 'success');
-            // Reload transactions
-            transactions = await FinanceDB.getTransactions(currentUser.id);
-            renderDashboardUI();
-          } catch (err) {
-            console.error(err);
-            showToast('Gagal menghapus transaksi.', 'danger');
-          }
-        }
-      });
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'btn btn-sm btn-action btn-delete';
+      deleteBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+      deleteBtn.onclick = () => deleteTransaction(tx.id);
+      actionsCell.appendChild(deleteBtn);
     });
   }
 
-  // Render Analytics Charts (Chart.js integration)
-  function renderCharts() {
-    // If a chart already exists, destroy it first to avoid canvas conflicts
-    if (myChart) {
-      myChart.destroy();
-      myChart = null;
+  function editTransaction(tx) {
+    transactionForm.dataset.editingId = tx.id; // Store ID for update
+    txType.value = tx.type;
+    txAmount.value = tx.amount;
+    txCategory.value = tx.category;
+    txDate.value = tx.date;
+    txDesc.value = tx.description;
+    document.getElementById('add-transaction-btn').textContent = 'Perbarui Transaksi';
+  }
+
+  function resetTransactionForm() {
+    transactionForm.reset();
+    delete transactionForm.dataset.editingId;
+    document.getElementById('add-transaction-btn').textContent = 'Tambah Transaksi';
+    txDate.value = getLocalDateString(); // Set default date to today
+  }
+
+  transactionForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const newTransaction = {
+      id: transactionForm.dataset.editingId || null,
+      type: txType.value,
+      amount: parseFloat(txAmount.value),
+      category: txCategory.value,
+      date: txDate.value,
+      description: txDesc.value,
+    };
+    addOrUpdateTransaction(newTransaction);
+  });
+
+  // --- Budget Logic ---
+  async function addBudget(budget) {
+    if (!currentUser) return;
+    try {
+      await FinanceDB.addBudget(currentUser.uid, budget);
+      showToast('Batas anggaran berhasil ditambahkan.', 'success');
+      await loadAllData();
+      resetBudgetForm();
+    } catch (error) {
+      console.error("Error adding budget:", error);
+      showToast('Gagal menambahkan batas anggaran.', 'danger');
     }
+  }
 
-    const expensesOnly = transactions.filter(tx => tx.type === 'expense');
+  async function deleteBudget(budgetId) {
+    if (!currentUser) return;
+    if (!confirm('Anda yakin ingin menghapus batas anggaran ini?')) return;
+    try {
+      await FinanceDB.deleteBudget(currentUser.uid, budgetId);
+      showToast('Batas anggaran berhasil dihapus.', 'success');
+      await loadAllData();
+    } catch (error) => {
+      console.error("Error deleting budget:", error);
+      showToast('Gagal menghapus batas anggaran.', 'danger');
+    }
+  }
 
-    if (expensesOnly.length === 0) {
-      // Draw placeholder message inside canvas block
-      const ctx = expensesChartCanvas.getContext('2d');
-      ctx.clearRect(0, 0, expensesChartCanvas.width, expensesChartCanvas.height);
-      ctx.fillStyle = '#6b7280';
-      ctx.font = '14px Outfit';
-      ctx.textAlign = 'center';
-      ctx.fillText('Belum ada transaksi pengeluaran untuk ditampilkan grafiknya.', expensesChartCanvas.width / 2, expensesChartCanvas.height / 2);
+  function renderBudgets() {
+    activeBudgetsList.innerHTML = '';
+    if (budgets.length === 0) {
+      activeBudgetsList.innerHTML = '<p class="placeholder-text">Belum ada batas anggaran aktif.</p>';
       return;
     }
 
-    if (activeChartTab === 'category') {
-      // Chart 1: Expenses by Category (Doughnut Chart)
-      const categoryMap = {};
-      expensesOnly.forEach(tx => {
-        categoryMap[tx.category] = (categoryMap[tx.category] || 0) + tx.amount;
-      });
+    budgets.forEach(budget => {
+      const li = document.createElement('li');
+      li.className = 'budget-item';
+      li.innerHTML = `
+        <span>${budget.category} (${budget.type === 'daily' ? 'Harian' : 'Bulanan'}): ${formatRupiah(budget.amount)}</span>
+        <button class="btn btn-sm btn-action btn-delete" onclick="deleteBudget('${budget.id}')"><i class="fa-solid fa-trash"></i></button>
+      `;
+      activeBudgetsList.appendChild(li);
+    });
+  }
 
-      const labels = Object.keys(categoryMap);
-      const data = Object.values(categoryMap);
-      const colors = [
-        '#6366f1', // Indigo
-        '#a855f7', // Purple
-        '#f43f5e', // Rose
-        '#f59e0b', // Amber
-        '#10b981', // Emerald
-        '#0ea5e9', // Sky
-        '#14b8a6', // Teal
-        '#ec4899', // Pink
-        '#8b5cf6'  // Violet
-      ];
+  function resetBudgetForm() {
+    budgetForm.reset();
+  }
 
-      myChart = new Chart(expensesChartCanvas, {
-        type: 'doughnut',
-        data: {
-          labels: labels,
-          datasets: [{
-            data: data,
-            backgroundColor: colors.slice(0, labels.length),
-            borderWidth: 2,
-            borderColor: '#111726'
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              position: 'right',
-              labels: {
-                color: '#9ca3af',
-                font: { family: 'Outfit', size: 11 }
-              }
-            },
-            tooltip: {
-              callbacks: {
-                label: function (context) {
-                  return ` ${context.label}: ${formatRupiah(context.raw)}`;
-                }
-              }
-            }
-          }
-        }
-      });
+  budgetForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const newBudget = {
+      category: budgetCategory.value,
+      amount: parseFloat(budgetAmount.value),
+      type: budgetForm.querySelector('input[name="budget-type"]:checked').value,
+    };
+    addBudget(newBudget);
+  });
 
-    } else {
-      // Chart 2: Daily Spending Trend in last 7 days (Bar Chart)
-      const dailyMap = {};
-
-      // Find last 7 days
-      const days = [];
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, '0');
-        const dd = String(d.getDate()).padStart(2, '0');
-        const dateStr = `${yyyy}-${mm}-${dd}`;
-        days.push(dateStr);
-        dailyMap[dateStr] = 0;
-      }
-
-      // Group expenses by date
-      expensesOnly.forEach(tx => {
-        if (dailyMap[tx.date] !== undefined) {
-          dailyMap[tx.date] += tx.amount;
-        }
-      });
-
-      const labels = days.map(dateStr => {
-        const [, , dd] = dateStr.split('-');
-        const dateObj = new Date(dateStr);
-        const dayName = dateObj.toLocaleDateString('id-ID', { weekday: 'short' });
-        return `${dayName} (${dd})`;
-      });
-      const data = Object.values(dailyMap);
-
-      myChart = new Chart(expensesChartCanvas, {
-        type: 'bar',
-        data: {
-          labels: labels,
-          datasets: [{
-            label: 'Pengeluaran (Rp)',
-            data: data,
-            backgroundColor: 'rgba(99, 102, 241, 0.7)',
-            borderColor: '#6366f1',
-            borderWidth: 1.5,
-            borderRadius: 6
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                label: function (context) {
-                  return ` Pengeluaran: ${formatRupiah(context.raw)}`;
-                }
-              }
-            }
-          },
-          scales: {
-            x: {
-              grid: { display: false },
-              ticks: { color: '#9ca3af', font: { family: 'Outfit' } }
-            },
-            y: {
-              grid: { color: 'rgba(255, 255, 255, 0.05)' },
-              ticks: {
-                color: '#9ca3af',
-                font: { family: 'Outfit' },
-                callback: function (value) {
-                  if (value >= 1000000) return 'Rp ' + (value / 1000000) + 'jt';
-                  if (value >= 1000) return 'Rp ' + (value / 1000) + 'rb';
-                  return 'Rp ' + value;
-                }
-              }
-            }
-          }
-        }
-      });
+  // --- Saving Goals Logic ---
+  async function addSavingGoal(goal) {
+    if (!currentUser) return;
+    try {
+      await FinanceDB.addSavingGoal(currentUser.uid, goal);
+      showToast('Target menabung berhasil ditambahkan.', 'success');
+      await loadAllData();
+      resetSavingGoalForm();
+    } catch (error) {
+      console.error("Error adding saving goal:", error);
+      showToast('Gagal menambahkan target menabung.', 'danger');
     }
   }
 
-  // ==========================================================================
-  // SAVING GOALS RENDER
-  // ==========================================================================
+  async function updateSavingGoal(goalId, amount) {
+    if (!currentUser) return;
+    try {
+      await FinanceDB.updateSavingGoal(currentUser.uid, goalId, { currentAmount: amount });
+      showToast('Target menabung berhasil diperbarui.', 'success');
+      await loadAllData();
+    } catch (error) {
+      console.error("Error updating saving goal:", error);
+      showToast('Gagal memperbarui target menabung.', 'danger');
+    }
+  }
+
+  async function deleteSavingGoal(goalId) {
+    if (!currentUser) return;
+    if (!confirm('Anda yakin ingin menghapus target menabung ini?')) return;
+    try {
+      await FinanceDB.deleteSavingGoal(currentUser.uid, goalId);
+      showToast('Target menabung berhasil dihapus.', 'success');
+      await loadAllData();
+    } catch (error) {
+      console.error("Error deleting saving goal:", error);
+      showToast('Gagal menghapus target menabung.', 'danger');
+    }
+  }
 
   function renderSavingGoals() {
-    const grid = document.getElementById('saving-goals-grid');
-    const placeholder = document.getElementById('goals-placeholder');
-    const summaryText = document.getElementById('goals-summary-text');
-    if (!grid) return;
+    const savingGoalsGrid = document.getElementById('saving-goals-grid');
+    const goalsPlaceholder = document.getElementById('goals-placeholder');
+    const goalsSummaryText = document.getElementById('goals-summary-text');
 
-    // Total all saving transactions
-    const totalSaved = transactions
-      .filter(tx => tx.type === 'saving')
-      .reduce((sum, tx) => sum + tx.amount, 0);
-
-    // Remove existing goal cards (keep placeholder)
-    grid.querySelectorAll('.goal-card').forEach(c => c.remove());
-
+    savingGoalsGrid.innerHTML = ''; // Clear existing cards
     if (savingGoals.length === 0) {
-      if (placeholder) placeholder.style.display = 'block';
-      if (summaryText) summaryText.textContent = '';
+      goalsPlaceholder.style.display = 'block';
+      goalsSummaryText.textContent = '0 target aktif';
       return;
     }
+    goalsPlaceholder.style.display = 'none';
 
-    if (placeholder) placeholder.style.display = 'none';
-
-    // Count achieved goals
-    let achievedCount = 0;
+    let totalGoals = 0;
+    let completedGoals = 0;
 
     savingGoals.forEach(goal => {
-      const percent = Math.min((totalSaved / goal.targetAmount) * 100, 100);
-      const isAchieved = totalSaved >= goal.targetAmount;
-      if (isAchieved) achievedCount++;
+      totalGoals++;
+      if (goal.currentAmount >= goal.targetAmount) {
+        completedGoals++;
+      }
 
-      const remaining = Math.max(goal.targetAmount - totalSaved, 0);
-
-      let progressClass = 'goal-progress-low';
-      if (percent >= 100) progressClass = 'goal-progress-done';
-      else if (percent >= 70) progressClass = 'goal-progress-high';
-      else if (percent >= 40) progressClass = 'goal-progress-mid';
-
+      const progress = (goal.currentAmount / goal.targetAmount) * 100;
       const card = document.createElement('div');
-      card.className = `goal-card glass-card ${isAchieved ? 'goal-achieved' : ''}`;
+      card.className = 'saving-goal-card';
       card.innerHTML = `
-        <div class="goal-card-header">
-          <div class="goal-emoji-badge">${goal.emoji || '🎯'}</div>
-          <div class="goal-info">
-            <h3 class="goal-name">${goal.name}</h3>
-            ${goal.description ? `<p class="goal-desc">${goal.description}</p>` : ''}
-          </div>
-          ${isAchieved ? '<div class="goal-achieved-badge"><i class="fa-solid fa-trophy"></i> Tercapai!</div>' : ''}
+        <h3>${goal.name}</h3>
+        <p class="goal-desc">${goal.description}</p>
+        <div class="progress-bar-wrapper">
+          <div class="progress-bar" style="width: ${Math.min(progress, 100)}%;"></div>
+          <span class="progress-text">${formatRupiah(goal.currentAmount)} / ${formatRupiah(goal.targetAmount)}</span>
         </div>
-
-        <div class="goal-amounts">
-          <span class="goal-saved">${formatRupiah(Math.min(totalSaved, goal.targetAmount))} <small>terkumpul</small></span>
-          <span class="goal-target">${formatRupiah(goal.targetAmount)} <small>target</small></span>
+        <p class="progress-percentage">${progress.toFixed(2)}% Tercapai</p>
+        <div class="goal-actions">
+          <button class="btn btn-sm btn-primary" onclick="showDepositModal('${goal.id}', ${goal.currentAmount})">Setor</button>
+          <button class="btn btn-sm btn-delete" onclick="deleteSavingGoal('${goal.id}')">Hapus</button>
         </div>
-
-        <div class="goal-progress-container">
-          <div class="goal-progress-fill ${progressClass}" style="width: ${percent.toFixed(1)}%"></div>
-        </div>
-
-        <div class="goal-footer">
-          <span class="goal-percent">${percent.toFixed(1)}% terpenuhi</span>
-          ${!isAchieved
-            ? `<span class="goal-remaining"><i class="fa-solid fa-clock"></i> Sisa ${formatRupiah(remaining)}</span>`
-            : `<span class="goal-remaining goal-remaining-done"><i class="fa-solid fa-circle-check"></i> Target terpenuhi!</span>`
-          }
-        </div>
-
-        <button class="btn btn-danger-sm delete-goal-btn" data-id="${goal.id}">
-          <i class="fa-solid fa-trash"></i> Hapus Target
-        </button>
       `;
-      grid.appendChild(card);
+      savingGoalsGrid.appendChild(card);
     });
-
-    // Update summary text
-    if (summaryText) {
-      summaryText.textContent = `${achievedCount} dari ${savingGoals.length} target tercapai`;
-    }
-
-    // Bind delete buttons
-    grid.querySelectorAll('.delete-goal-btn').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        const goalId = parseInt(btn.getAttribute('data-id'));
-        const goal = savingGoals.find(g => g.id === goalId);
-        if (confirm(`Hapus target "${goal ? goal.name : 'ini'}"? Tindakan ini tidak dapat dibatalkan.`)) {
-          try {
-            await FinanceDB.deleteSavingGoal(goalId);
-            showToast('Target menabung berhasil dihapus.', 'success');
-            savingGoals = await FinanceDB.getSavingGoals(currentUser.id);
-            renderSavingGoals();
-          } catch (err) {
-            showToast('Gagal menghapus target.', 'danger');
-          }
-        }
-      });
-    });
+    goalsSummaryText.textContent = `${completedGoals} dari ${totalGoals} target tercapai`;
   }
 
-  // ==========================================================================
-  // EVENT LISTENERS
-  // ==========================================================================
-
-  // Toggle password visibility
-  function resetPasswordFieldsVisibility() {
-    document.querySelectorAll('.password-input-wrapper input').forEach(input => {
-      input.type = 'password';
-    });
-    document.querySelectorAll('.toggle-password').forEach(icon => {
-      icon.classList.remove('fa-eye-slash');
-      icon.classList.add('fa-eye');
-    });
-  }
-
-  document.querySelectorAll('.toggle-password').forEach(icon => {
-    icon.addEventListener('click', () => {
-      const input = icon.previousElementSibling;
-      if (input.type === 'password') {
-        input.type = 'text';
-        icon.classList.remove('fa-eye');
-        icon.classList.add('fa-eye-slash');
-      } else {
-        input.type = 'password';
-        icon.classList.remove('fa-eye-slash');
-        icon.classList.add('fa-eye');
-      }
-    });
-  });
-
-  // Auth Toggle Form
-  goToRegister.addEventListener('click', (e) => {
-    e.preventDefault();
-    resetPasswordFieldsVisibility();
-    loginForm.classList.remove('active');
-    registerForm.classList.add('active');
-  });
-
-  goToLogin.addEventListener('click', (e) => {
-    e.preventDefault();
-    resetPasswordFieldsVisibility();
-    registerForm.classList.remove('active');
-    loginForm.classList.add('active');
-  });
-
-  // Submit Register Form
-  registerForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const username = document.getElementById('register-username').value;
-    const psw = document.getElementById('register-password').value;
-    const confirmPsw = document.getElementById('register-confirm-password').value;
-
-    if (psw.length < 6) {
-      showToast('Password harus minimal 6 karakter.', 'warning');
-      return;
-    }
-
-    if (psw !== confirmPsw) {
-      showToast('Konfirmasi password tidak cocok.', 'warning');
-      return;
-    }
-
-    try {
-      await FinanceDB.registerUser(username, psw);
-      showToast('Pendaftaran akun berhasil! Silakan masuk.', 'success');
-      registerForm.reset();
-      resetPasswordFieldsVisibility();
-
-      // Toggle back to login and auto fill username
-      registerForm.classList.remove('active');
-      loginForm.classList.add('active');
-      document.getElementById('login-username').value = username;
-    } catch (err) {
-      showToast(err.message, 'danger');
-    }
-  });
-
-  // Submit Login Form
-  loginForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const username = document.getElementById('login-username').value;
-    const psw = document.getElementById('login-password').value;
-
-    const loginBtn = loginForm.querySelector('button[type="submit"]');
-    loginBtn.disabled = true;
-    loginBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...';
-
-    try {
-      await FinanceDB.loginUser(username, psw);
-      // onAuthStateChanged will handle UI transition automatically
-      loginForm.reset();
-      resetPasswordFieldsVisibility();
-    } catch (err) {
-      showToast(err.message, 'danger');
-    } finally {
-      loginBtn.disabled = false;
-      loginBtn.innerHTML = 'Masuk <i class="fa-solid fa-right-to-bracket"></i>';
-    }
-  });
-
-  // Google Login Handler
-  const googleLoginBtn = document.getElementById('google-login-btn');
-  if (googleLoginBtn) {
-    googleLoginBtn.addEventListener('click', async () => {
-      googleLoginBtn.disabled = true;
-      googleLoginBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Membuka Google...';
-      try {
-        await FinanceDB.loginWithGoogle();
-        // onAuthStateChanged handles everything after this
-      } catch (err) {
-        showToast(err.message, 'danger');
-      } finally {
-        googleLoginBtn.disabled = false;
-        googleLoginBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 48 48" style="margin-right: 10px; flex-shrink:0;"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.29-8.16 2.29-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Masuk dengan Google`;
-      }
-    });
-  }
-
-  // Logout Handler
-  logoutBtn.addEventListener('click', () => {
-    if (confirm('Apakah Anda yakin ingin keluar dari aplikasi?')) {
-      FinanceDB.logoutUser()
-        .then(() => showToast('Anda telah berhasil keluar.', 'info'))
-        .catch(console.error);
-      // onAuthStateChanged will reset the UI automatically
-    }
-  });
-
-  // Submit Transaction Form
-  transactionForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!currentUser) return;
-
-    const type = txType.value;
-    const amount = parseFloat(txAmount.value);
-    const category = txCategory.value;
-    const date = txDate.value;
-    const description = txDesc.value;
-
-    try {
-      // Budget checking (Only triggers for expense)
-      if (type === 'expense') {
-        const categoryBudget = budgets.find(b => b.category === category);
-        if (categoryBudget) {
-          // Calculate today's existing expense in this category
-          const spentToday = transactions
-            .filter(tx => tx.type === 'expense' && tx.category === category && tx.date === date)
-            .reduce((sum, tx) => sum + tx.amount, 0);
-
-          const newTotal = spentToday + amount;
-          if (newTotal > categoryBudget.limitAmount) {
-            showToast(`Peringatan! Menambahkan Rp ${amount.toLocaleString('id-ID')} akan MELEBIHI batasan pengeluaran ${category} (${formatRupiah(categoryBudget.limitAmount)}) hari ini!`, 'warning');
-          }
-        }
-      }
-
-      await FinanceDB.addTransaction(currentUser.id, type, amount, category, date, description);
-      showToast('Transaksi berhasil ditambahkan.', 'success');
-
-      // Reset form controls except date
-      txAmount.value = '';
-      txCategory.value = '';
-      txDesc.value = '';
-
-      // Reload & Refresh
-      transactions = await FinanceDB.getTransactions(currentUser.id);
-      renderDashboardUI();
-
-      // If saving transaction, also refresh saving goals progress
-      if (type === 'saving') {
-        savingGoals = await FinanceDB.getSavingGoals(currentUser.id);
-      }
-    } catch (err) {
-      showToast(err.message, 'danger');
-    }
-  });
-
-  // Submit Budget / Limit Form
-  budgetForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!currentUser) return;
-
-    const category = budgetCategory.value;
-    const amount = parseFloat(budgetAmount.value);
-
-    try {
-      await FinanceDB.addBudget(currentUser.id, category, amount);
-      showToast(`Batasan pengeluaran kategori ${category} berhasil diterapkan!`, 'success');
-
-      budgetForm.reset();
-
-      // Reload & Refresh
-      budgets = await FinanceDB.getBudgets(currentUser.id);
-      renderDashboardUI();
-    } catch (err) {
-      showToast(err.message, 'danger');
-    }
-  });
-
-  // Submit Saving Goal Form
   const savingGoalForm = document.getElementById('saving-goal-form');
-  savingGoalForm.addEventListener('submit', async (e) => {
+  const savingGoalName = document.getElementById('goal-name');
+  const savingGoalTargetAmount = document.getElementById('goal-target-amount');
+  const savingGoalDescription = document.getElementById('goal-desc');
+
+  function resetSavingGoalForm() {
+    savingGoalForm.reset();
+  }
+
+  savingGoalForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    if (!currentUser) return;
+    const newGoal = {
+      name: savingGoalName.value,
+      description: savingGoalDescription.value,
+      targetAmount: parseFloat(savingGoalTargetAmount.value),
+      currentAmount: 0, // Start with 0
+      createdAt: new Date().toISOString(),
+    };
+    addSavingGoal(newGoal);
+  });
 
-    const name = document.getElementById('goal-name').value;
-    const amount = parseFloat(document.getElementById('goal-amount').value);
-    const desc = document.getElementById('goal-desc').value;
-    const emoji = document.getElementById('goal-emoji').value.trim() || '🎯';
+  // Deposit to Saving Goal Modal
+  const depositModal = document.getElementById('deposit-modal');
+  const closeDepositModalBtn = document.getElementById('close-deposit-modal');
+  const depositAmountInput = document.getElementById('deposit-amount');
+  const confirmDepositBtn = document.getElementById('confirm-deposit-btn');
+  let currentSavingGoalId = null;
+  let currentSavingGoalCurrentAmount = 0;
 
-    try {
-      await FinanceDB.addSavingGoal(currentUser.id, name, amount, desc, emoji);
-      showToast(`Target menabung "${name}" berhasil ditambahkan!`, 'success');
+  function showDepositModal(goalId, currentAmount) {
+    currentSavingGoalId = goalId;
+    currentSavingGoalCurrentAmount = currentAmount;
+    depositAmountInput.value = ''; // Clear previous input
+    depositModal.classList.remove('hidden');
+  }
 
-      savingGoalForm.reset();
+  closeDepositModalBtn.addEventListener('click', () => {
+    depositModal.classList.add('hidden');
+  });
 
-      // Reload & Refresh
-      savingGoals = await FinanceDB.getSavingGoals(currentUser.id);
-      renderSavingGoals();
-    } catch (err) {
-      showToast(err.message, 'danger');
+  confirmDepositBtn.addEventListener('click', async () => {
+    const amountToDeposit = parseFloat(depositAmountInput.value);
+    if (isNaN(amountToDeposit) || amountToDeposit <= 0) {
+      showToast('Jumlah setoran tidak valid.', 'danger');
+      return;
+    }
+    const newAmount = currentSavingGoalCurrentAmount + amountToDeposit;
+    await updateSavingGoal(currentSavingGoalId, newAmount);
+    depositModal.classList.add('hidden');
+  });
+
+  // Close modal when clicking outside content
+  depositModal.addEventListener('click', (e) => {
+    if (e.target === depositModal) {
+      depositModal.classList.add('hidden');
     }
   });
 
-  // Listeners for filters
+
+  // --- Chart Logic ---
+  function renderCharts() {
+    if (myChart) {
+      myChart.destroy();
+    }
+
+    if (!transactions.length) {
+      expensesChartCanvas.style.display = 'none';
+      return;
+    }
+    expensesChartCanvas.style.display = 'block';
+
+    if (activeChartTab === 'category') {
+      renderCategoryDistributionChart();
+    } else if (activeChartTab === 'trend') {
+      renderMonthlyTrendChart();
+    }
+  }
+
+  function renderCategoryDistributionChart() {
+    const expenseTransactions = transactions.filter(tx => tx.type === 'expense');
+    const categoryData = expenseTransactions.reduce((acc, tx) => {
+      acc[tx.category] = (acc[tx.category] || 0) + tx.amount;
+      return acc;
+    }, {});
+
+    const labels = Object.keys(categoryData);
+    const data = Object.values(categoryData);
+
+    myChart = new Chart(expensesChartCanvas, {
+      type: 'doughnut',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: data,
+          backgroundColor: [
+            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40',
+            '#8D6E63', '#C0CA33', '#795548', '#607D8B', '#E91E63', '#00BCD4',
+            '#FFD700', '#ADFF2F'
+          ],
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: {
+              color: '#fff',
+            }
+          },
+          title: {
+            display: true,
+            text: 'Distribusi Pengeluaran berdasarkan Kategori',
+            color: '#fff',
+          }
+        }
+      }
+    });
+  }
+
+  function renderMonthlyTrendChart() {
+    const monthlyData = transactions.reduce((acc, tx) => {
+      const monthYear = tx.date.substring(0, 7); // YYYY-MM
+      if (!acc[monthYear]) {
+        acc[monthYear] = { income: 0, expense: 0 };
+      }
+      if (tx.type === 'income') {
+        acc[monthYear].income += tx.amount;
+      } else {
+        acc[monthYear].expense += tx.amount;
+      }
+      return acc;
+    }, {});
+
+    const sortedMonths = Object.keys(monthlyData).sort();
+    const incomes = sortedMonths.map(month => monthlyData[month].income);
+    const expenses = sortedMonths.map(month => monthlyData[month].expense);
+
+    myChart = new Chart(expensesChartCanvas, {
+      type: 'line',
+      data: {
+        labels: sortedMonths,
+        datasets: [
+          {
+            label: 'Pemasukan',
+            data: incomes,
+            borderColor: '#28a745',
+            backgroundColor: 'rgba(40, 167, 69, 0.2)',
+            fill: true,
+            tension: 0.3
+          },
+          {
+            label: 'Pengeluaran',
+            data: expenses,
+            borderColor: '#dc3545',
+            backgroundColor: 'rgba(220, 53, 69, 0.2)',
+            fill: true,
+            tension: 0.3
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              color: '#fff',
+            }
+          },
+          title: {
+            display: true,
+            text: 'Tren Pemasukan dan Pengeluaran Bulanan',
+            color: '#fff',
+          }
+        },
+        scales: {
+          x: {
+            ticks: {
+              color: '#fff',
+            },
+            grid: {
+              color: 'rgba(255, 255, 255, 0.1)',
+            }
+          },
+          y: {
+            ticks: {
+              color: '#fff',
+              callback: function(value) {
+                return formatRupiah(value);
+              }
+            },
+            grid: {
+              color: 'rgba(255, 255, 255, 0.1)',
+            }
+          }
+        }
+      }
+    });
+  }
+
+
+  // --- Master Data Load and UI Update ---
+  async function loadAllData() {
+    if (!currentUser) return;
+    try {
+      transactions = await FinanceDB.getTransactions(currentUser.uid);
+      budgets = await FinanceDB.getBudgets(currentUser.uid);
+      savingGoals = await FinanceDB.getSavingGoals(currentUser.uid);
+
+      updateKPIs();
+      renderTransactionTable();
+      renderBudgets();
+      renderSavingGoals();
+      renderCharts();
+      populateCategoryFilters(); // Ensure filters are populated
+    } catch (error) {
+      console.error("Error loading all data:", error);
+      showToast('Gagal memuat data.', 'danger');
+    }
+  }
+
+  function populateCategoryFilters() {
+    // Clear existing options except 'all'
+    filterCategory.innerHTML = '<option value="all">Semua Kategori</option>';
+
+    // Get unique categories from all transactions
+    const uniqueCategories = [...new Set(transactions.map(tx => tx.category))];
+
+    uniqueCategories.sort().forEach(category => {
+      const option = document.createElement('option');
+      option.value = category;
+      option.textContent = category;
+      filterCategory.appendChild(option);
+    });
+  }
+
+  // Event Listeners for filters and tabs
   filterType.addEventListener('change', renderTransactionTable);
   filterCategory.addEventListener('change', renderTransactionTable);
   searchDesc.addEventListener('input', renderTransactionTable);
@@ -932,8 +739,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.removeChild(link);
     showToast('Ekspor CSV berhasil disiapkan.', 'success');
   });
-
-  // Initialize
 
   // --- Daily Report Logic ---
   function renderDailyReport() {
@@ -1013,10 +818,12 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   // --------------------------
 
+  // Initialize Firebase and load initial data
   FinanceDB.init().then(() => {
-    setupAuthListener();
+    // No setupAuthListener here, it's handled by the onAuthStateChanged at the top
   }).catch((err) => {
     console.error(err);
     showToast('Inisialisasi Firebase gagal. Pastikan konfigurasi firebaseConfig sudah diisi.', 'danger');
   });
+
 });
