@@ -1096,3 +1096,36 @@ a:hover {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+/* Financial Analysis Chart Tabs */
+.chart-tabs {
+  display: flex;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 4px;
+  border-radius: var(--border-radius-md);
+}
+
+.chart-tab {
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all var(--transition-speed);
+}
+
+.chart-tab:hover {
+  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.chart-tab.active {
+  background: var(--gradient-primary);
+  color: white;
+  box-shadow: 0 2px 5px rgba(74, 105, 189, 0.3);
+}

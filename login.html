@@ -1,10 +1,10 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="id">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dompetku - Login</title>
-    <meta name="description" content="Aplikasi pengelolaan keuangan pribadi premium dengan fitur lengkap: pencatatan pemasukan/pengeluaran, database lokal IndexedDB aman, batas anggaran dinamis, dan visualisasi grafik interaktif." />
+    <title>DompetKu - Masuk</title>
+    <meta name="description" content="Masuk atau daftar ke DompetKu untuk mulai mengelola keuangan pribadimu." />
 
     <!-- Fonts & Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="css/style.css" />
   </head>
   <body>
-    <!-- Background Blobs for Visual Aesthetics -->
+    <!-- Background Blobs -->
     <div class="bg-blob blob-1"></div>
     <div class="bg-blob blob-2"></div>
     <div class="bg-blob blob-3"></div>
@@ -24,101 +24,160 @@
     <!-- Toast Notification Container -->
     <div id="toast-container" class="toast-container"></div>
 
-    <!-- 1. AUTH CONTAINER (LOGIN / REGISTER) -->
-    <div id="auth-container" class="auth-container">
-      <div class="auth-card">
+    <!-- Auth Container -->
+    <div id="auth-container" class="auth-container hidden">
+      <div class="auth-card glass-card">
+
+        <!-- Header / Logo -->
         <div class="auth-header">
           <div class="logo">
-            <i class="fa-solid fa-wallet-gradient fa-wallet"></i>
+            <i class="fa-solid fa-wallet"></i>
             <span>DompetKu</span>
           </div>
-          <p id="auth-subtitle">Kelola keuangan harian secara cerdas, aman, dan mudah</p>
+          <p id="auth-subtitle">Kelola keuanganmu dengan cerdas &amp; mudah.</p>
         </div>
 
-        <!-- Login Form -->
+        <!-- ===== LOGIN FORM ===== -->
         <form id="login-form" class="auth-form active">
-          <h2>Selamat Datang Kembali</h2>
-          <p class="form-desc">Silakan masuk ke akun keuangan Anda</p>
+          <h2>Selamat Datang!</h2>
+          <p class="form-desc">Masuk ke akun DompetKu kamu.</p>
 
           <div class="input-group">
-            <label for="login-username"><i class="fa-solid fa-user"></i> Username</label>
-            <input type="text" id="login-username" required placeholder="Masukkan username Anda" />
+            <label for="login-username">
+              <i class="fa-solid fa-user"></i> Username
+            </label>
+            <input
+              type="text"
+              id="login-username"
+              name="login-username"
+              required
+              placeholder="Masukkan username kamu"
+              autocomplete="username"
+            />
           </div>
 
           <div class="input-group">
-            <label for="login-password"><i class="fa-solid fa-lock"></i> Password</label>
+            <label for="login-password">
+              <i class="fa-solid fa-lock"></i> Password
+            </label>
             <div class="password-input-wrapper">
-              <input type="password" id="login-password" required placeholder="Masukkan password Anda" />
-              <i class="fa-solid fa-eye toggle-password" id="toggle-login-password"></i>
+              <input
+                type="password"
+                id="login-password"
+                name="login-password"
+                required
+                placeholder="Masukkan password kamu"
+                autocomplete="current-password"
+              />
+              <i class="fa-solid fa-eye toggle-password"></i>
             </div>
           </div>
 
-          <button type="submit" class="btn btn-primary btn-block">Masuk <i class="fa-solid fa-right-to-bracket"></i></button>
+          <button type="submit" class="btn btn-primary btn-block" style="margin-top: 1.2rem;">
+            Masuk <i class="fa-solid fa-right-to-bracket"></i>
+          </button>
 
-          <div class="auth-divider"><span>atau</span></div>
+          <div class="auth-divider">atau</div>
 
           <button type="button" id="google-login-btn" class="btn btn-google btn-block">
-            <svg width="18" height="18" viewBox="0 0 48 48" style="margin-right: 10px; flex-shrink: 0">
-              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
-              <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
-              <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
-              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.29-8.16 2.29-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20" height="20">
+              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+              <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+              <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+              <path fill="none" d="M0 0h48v48H0z"/>
             </svg>
             Masuk dengan Google
           </button>
 
-          <p class="auth-toggle-text">Belum punya akun? <a href="#" id="go-to-register">Daftar sekarang</a></p>
+          <p class="auth-toggle-text">
+            Belum punya akun?
+            <a href="#" id="go-to-register">Daftar sekarang</a>
+          </p>
         </form>
 
-        <!-- Register Form -->
+        <!-- ===== REGISTER FORM ===== -->
         <form id="register-form" class="auth-form">
           <h2>Buat Akun Baru</h2>
-          <p class="form-desc">Mulai kelola keuangan Anda dengan lebih baik</p>
+          <p class="form-desc">Daftarkan dirimu dan mulai perjalanan finansialmu!</p>
 
           <div class="input-group">
-            <label for="register-username"><i class="fa-solid fa-user"></i> Username</label>
-            <input type="text" id="register-username" required placeholder="Pilih username baru" />
+            <label for="register-username">
+              <i class="fa-solid fa-user"></i> Username
+            </label>
+            <input
+              type="text"
+              id="register-username"
+              name="register-username"
+              required
+              placeholder="Buat username unikmu"
+              autocomplete="username"
+            />
           </div>
 
           <div class="input-group">
-            <label for="register-password"><i class="fa-solid fa-lock"></i> Password</label>
+            <label for="register-password">
+              <i class="fa-solid fa-lock"></i> Password
+            </label>
             <div class="password-input-wrapper">
-              <input type="password" id="register-password" required placeholder="Pilih password minimal 6 karakter" />
-              <i class="fa-solid fa-eye toggle-password" id="toggle-register-password"></i>
+              <input
+                type="password"
+                id="register-password"
+                name="register-password"
+                required
+                placeholder="Buat password yang kuat (min. 6 karakter)"
+                autocomplete="new-password"
+              />
+              <i class="fa-solid fa-eye toggle-password"></i>
             </div>
           </div>
 
           <div class="input-group">
-            <label for="register-confirm-password"><i class="fa-solid fa-lock"></i> Konfirmasi Password</label>
+            <label for="register-confirm-password">
+              <i class="fa-solid fa-lock"></i> Konfirmasi Password
+            </label>
             <div class="password-input-wrapper">
-              <input type="password" id="register-confirm-password" required placeholder="Konfirmasi password Anda" />
-              <i class="fa-solid fa-eye toggle-password" id="toggle-register-confirm-password"></i>
+              <input
+                type="password"
+                id="register-confirm-password"
+                name="register-confirm-password"
+                required
+                placeholder="Ulangi password kamu"
+                autocomplete="new-password"
+              />
+              <i class="fa-solid fa-eye toggle-password"></i>
             </div>
           </div>
 
-          <button type="submit" class="btn btn-primary btn-block">Daftar <i class="fa-solid fa-user-plus"></i></button>
+          <button type="submit" class="btn btn-primary btn-block" style="margin-top: 1.2rem;">
+            Daftar <i class="fa-solid fa-user-plus"></i>
+          </button>
 
-          <div class="auth-divider"><span>atau</span></div>
+          <div class="auth-divider">atau</div>
 
           <button type="button" id="google-register-btn" class="btn btn-google btn-block">
-            <svg width="18" height="18" viewBox="0 0 48 48" style="margin-right: 10px; flex-shrink: 0">
-              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
-              <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
-              <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
-              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.29-8.16 2.29-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20" height="20">
+              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+              <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+              <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+              <path fill="none" d="M0 0h48v48H0z"/>
             </svg>
             Daftar dengan Google
           </button>
 
-          <p class="auth-toggle-text">Sudah punya akun? <a href="#" id="go-to-login">Masuk sekarang</a></p>
+          <p class="auth-toggle-text">
+            Sudah punya akun?
+            <a href="#" id="go-to-login">Masuk di sini</a>
+          </p>
         </form>
+
       </div>
     </div>
 
-    <!-- Scripts -->
-    <!-- Firebase SDK (compat v9) -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <!-- Scripts: db dulu, lalu mock firebase, lalu auth logic -->
+    <script src="js/db.js"></script>
+    <script src="js/firebase-local.js"></script>
+    <script src="js/auth.js"></script>
   </body>
 </html>

@@ -1,29 +1,13 @@
-/**
+﻿/**
  * auth.js - Handles user authentication logic for login and registration.
- * Manages UI interactions for auth forms and redirects based on authentication status.
+ * Menggunakan firebase-local.js (mock IndexedDB) — tidak memerlukan Firebase SDK asli.
  */
 
-// Firebase Configuration (Make sure this matches your project's config)
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY", // Replace with your actual API Key
-  authDomain: "YOUR_AUTH_DOMAIN", // Replace with your actual Auth Domain
-  projectId: "YOUR_PROJECT_ID", // Replace with your actual Project ID
-  storageBucket: "YOUR_STORAGE_BUCKET", // Replace with your actual Storage Bucket
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID", // Replace with your actual Messaging Sender ID
-  appId: "YOUR_APP_ID" // Replace with your actual App ID
-};
-
-// Initialize Firebase (compat v9)
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
-
-// Helper: Toast Notifications (Copied from app.js for auth purposes)
+// Helper: Toast Notifications
 function showToast(message, type = 'info') {
   const container = document.getElementById('toast-container');
-  // Ensure container exists, important for login.html
   if (!container) {
-    console.warn("Toast container not found. Cannot display toast.");
+    console.warn('Toast container not found.');
     return;
   }
   const toast = document.createElement('div');
@@ -41,17 +25,13 @@ function showToast(message, type = 'info') {
   `;
 
   container.appendChild(toast);
-
-  // Animate in
   setTimeout(() => toast.classList.add('show'), 50);
 
-  // Auto-remove after 4 seconds
   const autoRemove = setTimeout(() => {
     toast.classList.remove('show');
     setTimeout(() => toast.remove(), 300);
   }, 4500);
 
-  // Close button handler
   toast.querySelector('.toast-close').addEventListener('click', () => {
     clearTimeout(autoRemove);
     toast.classList.remove('show');
@@ -62,12 +42,11 @@ function showToast(message, type = 'info') {
 // Authentication Functions
 async function registerUser(username, password) {
   try {
-    const userCredential = await auth.createUserWithEmailAndPassword(username, password);
-    await userCredential.user.updateProfile({ displayName: username });
+    const userCredential = await firebase.auth().createUserWithEmailAndPassword(username, password);
     showToast('Pendaftaran berhasil! Silakan masuk.', 'success');
     return userCredential.user;
   } catch (error) {
-    console.error("Error registering user:", error);
+    console.error('Error registering user:', error);
     showToast(`Pendaftaran gagal: ${error.message}`, 'danger');
     throw error;
   }
@@ -75,11 +54,11 @@ async function registerUser(username, password) {
 
 async function loginUser(username, password) {
   try {
-    const userCredential = await auth.signInWithEmailAndPassword(username, password);
+    const userCredential = await firebase.auth().signInWithEmailAndPassword(username, password);
     showToast('Login berhasil!', 'success');
     return userCredential.user;
   } catch (error) {
-    console.error("Error logging in user:", error);
+    console.error('Error logging in user:', error);
     showToast(`Login gagal: ${error.message}`, 'danger');
     throw error;
   }
@@ -87,24 +66,12 @@ async function loginUser(username, password) {
 
 async function signInWithGoogle() {
   try {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    const userCredential = await auth.signInWithPopup(provider);
+    const userCredential = await firebase.auth().signInWithPopup();
     showToast('Login dengan Google berhasil!', 'success');
     return userCredential.user;
   } catch (error) {
-    console.error("Error signing in with Google:", error);
+    console.error('Error signing in with Google:', error);
     showToast(`Login dengan Google gagal: ${error.message}`, 'danger');
-    throw error;
-  }
-}
-
-async function logoutUser() {
-  try {
-    await auth.signOut();
-    showToast('Anda telah keluar.', 'info');
-  } catch (error) {
-    console.error("Error logging out:", error);
-    showToast(`Gagal keluar: ${error.message}`, 'danger');
     throw error;
   }
 }
@@ -118,12 +85,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const googleLoginBtn = document.getElementById('google-login-btn');
   const googleRegisterBtn = document.getElementById('google-register-btn');
 
-  // Redirect if already authenticated
-  auth.onAuthStateChanged((user) => {
+  // Redirect jika sudah login
+  firebase.auth().onAuthStateChanged((user) => {
     if (user) {
       window.location.href = 'home.html';
     } else {
-      // Ensure auth container is visible if not authenticated
       if (authContainer) {
         authContainer.classList.remove('hidden');
       }
@@ -134,14 +100,15 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.toggle-password').forEach(toggle => {
     toggle.addEventListener('click', () => {
       const passwordInput = toggle.previousElementSibling;
-      const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-      passwordInput.setAttribute('type', type);
+      if (!passwordInput) return;
+      const isPassword = passwordInput.getAttribute('type') === 'password';
+      passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
       toggle.classList.toggle('fa-eye');
       toggle.classList.toggle('fa-eye-slash');
     });
   });
 
-  // Switch between login and register forms
+  // Switch ke form registrasi
   if (goToRegister) {
     goToRegister.addEventListener('click', (e) => {
       e.preventDefault();
@@ -150,6 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Switch ke form login
   if (goToLogin) {
     goToLogin.addEventListener('click', (e) => {
       e.preventDefault();
@@ -158,40 +126,43 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Handle Login Form Submission
+  // Handle Login Form
   if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const username = loginForm['login-username'].value;
-      const password = loginForm['login-password'].value;
-
+      const username = document.getElementById('login-username').value.trim();
+      const password = document.getElementById('login-password').value;
       try {
         await loginUser(username, password);
-        // Redirection handled by onAuthStateChanged listener
+        // Redirect ditangani oleh onAuthStateChanged
       } catch (error) {
-        // Error already displayed by showToast in loginUser
+        // Error sudah ditampilkan via showToast
       }
     });
   }
 
-  // Handle Register Form Submission
+  // Handle Register Form
   if (registerForm) {
     registerForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const username = registerForm['register-username'].value;
-      const password = registerForm['register-password'].value;
-      const confirmPassword = registerForm['register-confirm-password'].value;
+      const username = document.getElementById('register-username').value.trim();
+      const password = document.getElementById('register-password').value;
+      const confirmPassword = document.getElementById('register-confirm-password').value;
 
       if (password !== confirmPassword) {
         showToast('Password dan konfirmasi password tidak cocok!', 'danger');
         return;
       }
+      if (password.length < 6) {
+        showToast('Password minimal 6 karakter.', 'warning');
+        return;
+      }
 
       try {
         await registerUser(username, password);
-        // Redirection handled by onAuthStateChanged listener
+        // Redirect ditangani oleh onAuthStateChanged
       } catch (error) {
-        // Error already displayed by showToast in registerUser
+        // Error sudah ditampilkan via showToast
       }
     });
   }
@@ -201,21 +172,19 @@ document.addEventListener('DOMContentLoaded', () => {
     googleLoginBtn.addEventListener('click', async () => {
       try {
         await signInWithGoogle();
-        // Redirection handled by onAuthStateChanged listener
       } catch (error) {
-        // Error already displayed by showToast in signInWithGoogle
+        // Error sudah ditampilkan via showToast
       }
     });
   }
 
-  // Handle Google Register (can reuse googleLoginBtn logic as it registers/logs in)
+  // Handle Google Register
   if (googleRegisterBtn) {
     googleRegisterBtn.addEventListener('click', async () => {
       try {
         await signInWithGoogle();
-        // Redirection handled by onAuthStateChanged listener
       } catch (error) {
-        // Error already displayed by showToast in signInWithGoogle
+        // Error sudah ditampilkan via showToast
       }
     });
   }

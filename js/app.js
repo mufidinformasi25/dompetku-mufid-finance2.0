@@ -134,7 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
       currentUser = user;
       usernameDisplay.textContent = `Halo, ${currentUser.displayName || currentUser.email}`;
       appContainer.classList.remove('hidden'); // Ensure app container is visible
-      await initApp(); // Initialize data and UI for authenticated user
+      await loadAllData(); // Initialize data and UI for authenticated user
     } else {
       currentUser = null;
       // If not authenticated, redirect to index.html
@@ -322,11 +322,12 @@ document.addEventListener('DOMContentLoaded', () => {
       await FinanceDB.deleteBudget(currentUser.uid, budgetId);
       showToast('Batas anggaran berhasil dihapus.', 'success');
       await loadAllData();
-    } catch (error) => {
+    } catch (error) {
       console.error("Error deleting budget:", error);
       showToast('Gagal menghapus batas anggaran.', 'danger');
     }
   }
+  window.deleteBudget = deleteBudget;
 
   function renderBudgets() {
     activeBudgetsList.innerHTML = '';
@@ -398,6 +399,7 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast('Gagal menghapus target menabung.', 'danger');
     }
   }
+  window.deleteSavingGoal = deleteSavingGoal;
 
   function renderSavingGoals() {
     const savingGoalsGrid = document.getElementById('saving-goals-grid');
@@ -477,6 +479,7 @@ document.addEventListener('DOMContentLoaded', () => {
     depositAmountInput.value = ''; // Clear previous input
     depositModal.classList.remove('hidden');
   }
+  window.showDepositModal = showDepositModal;
 
   closeDepositModalBtn.addEventListener('click', () => {
     depositModal.classList.add('hidden');

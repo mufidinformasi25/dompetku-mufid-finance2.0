@@ -179,24 +179,22 @@
 
     /**
      * Add a transaction
-     * @param {number} userId 
-     * @param {string} type 'income' | 'expense'
-     * @param {number} amount 
-     * @param {string} category 
-     * @param {string} date YYYY-MM-DD
-     * @param {string} description 
+     * @param {string|number} userId 
+     * @param {object} transaction
      * @returns {Promise<object>} Transaction object
      */
-    async addTransaction(userId, type, amount, category, date, description) {
+    async addTransaction(userId, transaction) {
       const db = await this.init();
+      const numericId = Number(userId);
+      const uId = isNaN(numericId) ? userId : numericId;
       const tx = {
-        userId,
-        type, // 'income' or 'expense'
-        amount: parseFloat(amount),
-        category,
-        date, // YYYY-MM-DD
-        description: description.trim(),
-        createdAt: new Date().toISOString()
+        userId: uId,
+        type: transaction.type, // 'income' or 'expense'
+        amount: parseFloat(transaction.amount),
+        category: transaction.category,
+        date: transaction.date, // YYYY-MM-DD
+        description: (transaction.description || '').trim(),
+        createdAt: transaction.createdAt || new Date().toISOString()
       };
 
       if (isNaN(tx.amount) || tx.amount <= 0) {
@@ -210,8 +208,8 @@
       }
 
       return new Promise((resolve, reject) => {
-        const transaction = db.transaction(['transactions'], 'readwrite');
-        const store = transaction.objectStore('transactions');
+        const transactionStore = db.transaction(['transactions'], 'readwrite');
+        const store = transactionStore.objectStore('transactions');
         const request = store.add(tx);
 
         request.onsuccess = (event) => {
@@ -226,21 +224,57 @@
     },
 
     /**
+     * Update a transaction
+     * @param {string|number} userId 
+     * @param {number} transactionId 
+     * @param {object} updates 
+     * @returns {Promise<object>} Updated transaction
+     */
+    async updateTransaction(userId, transactionId, updates) {
+      const db = await this.init();
+      const id = Number(transactionId) || transactionId;
+      return new Promise((resolve, reject) => {
+        const transactionStore = db.transaction(['transactions'], 'readwrite');
+        const store = transactionStore.objectStore('transactions');
+        const getReq = store.get(id);
+        
+        getReq.onsuccess = () => {
+          const data = getReq.result;
+          if (!data) {
+            reject(new Error('Transaksi tidak ditemukan.'));
+            return;
+          }
+          if (updates.type) data.type = updates.type;
+          if (updates.amount) data.amount = parseFloat(updates.amount);
+          if (updates.category) data.category = updates.category;
+          if (updates.date) data.date = updates.date;
+          if (updates.description !== undefined) data.description = updates.description.trim();
+          
+          const putReq = store.put(data);
+          putReq.onsuccess = () => resolve(data);
+          putReq.onerror = () => reject(new Error('Gagal memperbarui transaksi.'));
+        };
+        getReq.onerror = () => reject(new Error('Gagal mencari transaksi untuk diperbarui.'));
+      });
+    },
+
+    /**
      * Get all transactions for a user
-     * @param {number} userId 
+     * @param {string|number} userId 
      * @returns {Promise<Array>} List of transactions sorted by date descending
      */
     async getTransactions(userId) {
       const db = await this.init();
+      const numericId = Number(userId);
+      const searchId = isNaN(numericId) ? userId : numericId;
       return new Promise((resolve, reject) => {
         const transaction = db.transaction(['transactions'], 'readonly');
         const store = transaction.objectStore('transactions');
         const userIdIndex = store.index('userId');
-        const request = userIdIndex.getAll(userId);
+        const request = userIdIndex.getAll(searchId);
 
         request.onsuccess = () => {
           const list = request.result;
-          // Sort by date desc, then by id desc
           list.sort((a, b) => {
             const dateCompare = b.date.localeCompare(a.date);
             if (dateCompare !== 0) return dateCompare;
@@ -257,36 +291,34 @@
 
     /**
      * Delete a transaction by ID
+     * @param {string|number} userId 
      * @param {number} transactionId 
      * @returns {Promise<boolean>}
      */
-    async deleteTransaction(transactionId) {
+    async deleteTransaction(userId, transactionId) {
       const db = await this.init();
+      const id = Number(transactionId) || transactionId;
       return new Promise((resolve, reject) => {
         const transaction = db.transaction(['transactions'], 'readwrite');
         const store = transaction.objectStore('transactions');
-        const request = store.delete(transactionId);
+        const request = store.delete(id);
 
-        request.onsuccess = () => {
-          resolve(true);
-        };
-
-        request.onerror = () => {
-          reject(new Error('Gagal menghapus transaksi.'));
-        };
+        request.onsuccess = () => resolve(true);
+        request.onerror = () => reject(new Error('Gagal menghapus transaksi.'));
       });
     },
 
     /**
-     * Set a budget/limit for a category
-     * @param {number} userId 
-     * @param {string} category 
-     * @param {number} limitAmount 
+     * Add a budget limit for a category
+     * @param {string|number} userId 
+     * @param {object} budget 
      * @returns {Promise<object>} Budget object
      */
-    async setBudget(userId, category, limitAmount) {
+    async addBudget(userId, budget) {
       const db = await this.init();
-      const amount = parseFloat(limitAmount);
+      const numericId = Number(userId);
+      const uId = isNaN(numericId) ? userId : numericId;
+      const amount = parseFloat(budget.amount);
 
       if (isNaN(amount) || amount < 0) {
         throw new Error('Batas nominal tidak valid.');
@@ -296,21 +328,23 @@
         const transaction = db.transaction(['budgets'], 'readwrite');
         const store = transaction.objectStore('budgets');
         const index = store.index('userId_category');
-        const getRequest = index.get([userId, category]);
+        const getRequest = index.get([uId, budget.category]);
 
         getRequest.onsuccess = () => {
           const existingBudget = getRequest.result;
           if (existingBudget) {
-            existingBudget.limitAmount = amount;
+            existingBudget.amount = amount;
+            existingBudget.type = budget.type;
             existingBudget.updatedAt = new Date().toISOString();
             const updateRequest = store.put(existingBudget);
             updateRequest.onsuccess = () => resolve(existingBudget);
             updateRequest.onerror = () => reject(new Error('Gagal memperbarui batas anggaran.'));
           } else {
             const newBudget = {
-              userId,
-              category,
-              limitAmount: amount,
+              userId: uId,
+              category: budget.category,
+              amount: amount,
+              type: budget.type,
               createdAt: new Date().toISOString()
             };
             const addRequest = store.add(newBudget);
@@ -330,86 +364,80 @@
 
     /**
      * Get all budgets/limits for a user
-     * @param {number} userId 
+     * @param {string|number} userId 
      * @returns {Promise<Array>} List of budgets
      */
     async getBudgets(userId) {
       const db = await this.init();
+      const numericId = Number(userId);
+      const searchId = isNaN(numericId) ? userId : numericId;
       return new Promise((resolve, reject) => {
         const transaction = db.transaction(['budgets'], 'readonly');
         const store = transaction.objectStore('budgets');
         const index = store.index('userId');
-        const request = index.getAll(userId);
+        const request = index.getAll(searchId);
 
-        request.onsuccess = () => {
-          resolve(request.result);
-        };
-
-        request.onerror = () => {
-          reject(new Error('Gagal mengambil data anggaran.'));
-        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(new Error('Gagal mengambil data anggaran.'));
       });
     },
 
     /**
      * Delete a budget limit
+     * @param {string|number} userId 
      * @param {number} budgetId 
      * @returns {Promise<boolean>}
      */
-    async deleteBudget(budgetId) {
+    async deleteBudget(userId, budgetId) {
       const db = await this.init();
+      const id = Number(budgetId) || budgetId;
       return new Promise((resolve, reject) => {
         const transaction = db.transaction(['budgets'], 'readwrite');
         const store = transaction.objectStore('budgets');
-        const request = store.delete(budgetId);
+        const request = store.delete(id);
 
-        request.onsuccess = () => {
-          resolve(true);
-        };
-
-        request.onerror = () => {
-          reject(new Error('Gagal menghapus batas anggaran.'));
-        };
+        request.onsuccess = () => resolve(true);
+        request.onerror = () => reject(new Error('Gagal menghapus batas anggaran.'));
       });
-    },  // <-- koma diperlukan sebelum method berikutnya
+    },
+
     /**
      * Add a new saving goal
-     * @param {number} userId
-     * @param {string} name - e.g. "Beli Laptop"
-     * @param {number} targetAmount - nominal target
-     * @param {string} description - optional description
-     * @param {string} emoji - optional emoji icon
+     * @param {string|number} userId
+     * @param {object} goal
      * @returns {Promise<object>} Saving goal object
      */
-    async addSavingGoal(userId, name, targetAmount, description = '', emoji = '🎯') {
+    async addSavingGoal(userId, goal) {
       const db = await this.init();
-      const amount = parseFloat(targetAmount);
+      const numericId = Number(userId);
+      const uId = isNaN(numericId) ? userId : numericId;
+      const targetAmount = parseFloat(goal.targetAmount);
 
-      if (!name || !name.trim()) {
+      if (!goal.name || !goal.name.trim()) {
         throw new Error('Nama target tidak boleh kosong.');
       }
-      if (isNaN(amount) || amount <= 0) {
+      if (isNaN(targetAmount) || targetAmount <= 0) {
         throw new Error('Nominal target harus lebih besar dari 0.');
       }
 
-      const goal = {
-        userId,
-        name: name.trim(),
-        targetAmount: amount,
-        description: description.trim(),
-        emoji: emoji || '🎯',
-        achieved: false,
-        createdAt: new Date().toISOString()
+      const newGoal = {
+        userId: uId,
+        name: goal.name.trim(),
+        targetAmount: targetAmount,
+        currentAmount: parseFloat(goal.currentAmount) || 0,
+        description: (goal.description || '').trim(),
+        emoji: goal.emoji || '🎯',
+        createdAt: goal.createdAt || new Date().toISOString()
       };
 
       return new Promise((resolve, reject) => {
         const transaction = db.transaction(['savingGoals'], 'readwrite');
         const store = transaction.objectStore('savingGoals');
-        const request = store.add(goal);
+        const request = store.add(newGoal);
 
         request.onsuccess = (event) => {
-          goal.id = event.target.result;
-          resolve(goal);
+          newGoal.id = event.target.result;
+          resolve(newGoal);
         };
 
         request.onerror = () => {
@@ -419,17 +447,54 @@
     },
 
     /**
+     * Update a saving goal
+     * @param {string|number} userId 
+     * @param {number} goalId 
+     * @param {object} updates 
+     * @returns {Promise<object>} Updated saving goal
+     */
+    async updateSavingGoal(userId, goalId, updates) {
+      const db = await this.init();
+      const id = Number(goalId) || goalId;
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(['savingGoals'], 'readwrite');
+        const store = transaction.objectStore('savingGoals');
+        const getReq = store.get(id);
+
+        getReq.onsuccess = () => {
+          const data = getReq.result;
+          if (!data) {
+            reject(new Error('Target menabung tidak ditemukan.'));
+            return;
+          }
+          if (updates.name !== undefined) data.name = updates.name.trim();
+          if (updates.targetAmount !== undefined) data.targetAmount = parseFloat(updates.targetAmount);
+          if (updates.currentAmount !== undefined) data.currentAmount = parseFloat(updates.currentAmount);
+          if (updates.description !== undefined) data.description = updates.description.trim();
+          if (updates.emoji !== undefined) data.emoji = updates.emoji;
+
+          const putReq = store.put(data);
+          putReq.onsuccess = () => resolve(data);
+          putReq.onerror = () => reject(new Error('Gagal memperbarui target menabung.'));
+        };
+        getReq.onerror = () => reject(new Error('Gagal mencari target menabung untuk diperbarui.'));
+      });
+    },
+
+    /**
      * Get all saving goals for a user
-     * @param {number} userId
+     * @param {string|number} userId
      * @returns {Promise<Array>} List of saving goals
      */
     async getSavingGoals(userId) {
       const db = await this.init();
+      const numericId = Number(userId);
+      const searchId = isNaN(numericId) ? userId : numericId;
       return new Promise((resolve, reject) => {
         const transaction = db.transaction(['savingGoals'], 'readonly');
         const store = transaction.objectStore('savingGoals');
         const index = store.index('userId');
-        const request = index.getAll(userId);
+        const request = index.getAll(searchId);
 
         request.onsuccess = () => {
           const list = request.result;
@@ -445,15 +510,17 @@
 
     /**
      * Delete a saving goal by ID
+     * @param {string|number} userId 
      * @param {number} goalId
      * @returns {Promise<boolean>}
      */
-    async deleteSavingGoal(goalId) {
+    async deleteSavingGoal(userId, goalId) {
       const db = await this.init();
+      const id = Number(goalId) || goalId;
       return new Promise((resolve, reject) => {
         const transaction = db.transaction(['savingGoals'], 'readwrite');
         const store = transaction.objectStore('savingGoals');
-        const request = store.delete(goalId);
+        const request = store.delete(id);
 
         request.onsuccess = () => resolve(true);
         request.onerror = () => reject(new Error('Gagal menghapus target menabung.'));
