@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="id">
   <head>
     <meta charset="UTF-8" />
@@ -175,9 +175,13 @@
       </div>
     </div>
 
-    <!-- Scripts: db dulu, lalu mock firebase, lalu auth logic -->
-    <script src="js/db.js"></script>
-    <script src="js/firebase-local.js"></script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <!-- Firebase Config -->
+    <script src="js/firebase-config.js"></script>
+    <!-- Auth Logic -->
     <script src="js/auth.js"></script>
   </body>
 </html>

@@ -205,24 +205,31 @@ a:hover {
 }
 
 .btn-google {
-  background-color: #ffffff; /* White background for Google button */
-  color: #1f2937; /* Dark text for Google button */
-  border: 1px solid #d1d5db; /* Light grey border */
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  background-color: #ffffff;
+  color: #3c4043;
+  border: 1px solid #dadce0;
+  box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
+  font-family: "Roboto", "Outfit", sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.25px;
+  border-radius: 4px;
 }
 
 .btn-google:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  border-color: #a0a7ae; /* Slightly darker border on hover */
+  background-color: #f8f9fa;
+  box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15);
+  transform: none;
+  border-color: #dadce0;
 }
 
 .btn-google:active {
-  transform: translateY(0);
+  background-color: #e8eaed;
+  box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
+  transform: none;
 }
 
 .btn-google svg {
-  margin-right: 10px;
+  margin-right: 12px;
   flex-shrink: 0;
 }
 
@@ -324,6 +331,12 @@ a:hover {
   transform: translateY(-50%);
   cursor: pointer;
   color: var(--text-muted); /* Darker color for visibility */
+}
+/* Fix: input password dalam wrapper harus full width dengan padding untuk icon */
+.password-input-wrapper input[type="password"],
+.password-input-wrapper input[type="text"] {
+  width: 100%;
+  padding-right: 2.8rem;
 }
 
 .radio-group {
@@ -489,7 +502,7 @@ a:hover {
   justify-content: space-between;
   position: sticky;
   top: 1.5rem;
-  left: 1.5rem;
+  margin-left: 1.5rem;
   height: calc(100vh - 3rem);
   background: var(--bg-secondary); /* White background for sidebar */
   border-radius: var(--border-radius-lg);
@@ -576,10 +589,11 @@ a:hover {
 
 .main-content {
   flex-grow: 1;
-  padding: 1.5rem 1.5rem 1.5rem 0; /* Adjusted padding */
+  padding: 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  min-width: 0;
 }
 
 .kpi-cards {
@@ -1017,6 +1031,7 @@ a:hover {
     height: auto;
     top: 0;
     left: 0;
+    margin-left: 0;
     border-radius: 0;
     box-shadow: none;
     border: none;
@@ -1129,3 +1144,4 @@ a:hover {
   color: white;
   box-shadow: 0 2px 5px rgba(74, 105, 189, 0.3);
 }
+
