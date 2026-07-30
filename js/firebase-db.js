@@ -1,140 +1,208 @@
 /**
- * firebase-db.js - Handles all Firebase (Firestore) related operations.
- * Authentication logic is now handled in auth.js.
+ * firebase-db.js - Handles all Firebase (Firestore) related operations
+ * with automatic fallback to local IndexedDB if Firestore fails or rules block access.
  */
 
-// Firebase `auth` and `db` are initialized in `auth.js` or `index.html` for redirection
-// For home.html, we just need to access the already initialized firebase app and firestore.
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// Function to get the current user's UID safely
 function getCurrentUserUid() {
   const user = auth.currentUser;
   if (!user) {
-    console.error("No authenticated user found for DB operation.");
-    // In home.html, this should ideally not happen due to the auth check and redirect.
-    // However, as a fallback, we might redirect to index.html or login.html
-    window.location.href = 'index.html'; // Redirect to initial loader/login
-    throw new Error("No authenticated user.");
+    window.location.href = 'index.html';
+    throw new Error("Tidak ada pengguna terautentikasi.");
   }
   return user.uid;
 }
 
-// Firestore Operations
 const FinanceDB = {
-  // Initialize FinanceDB (ensure Firebase is initialized before calling this)
   init: async () => {
-    // This function is now mainly for ensuring Firestore access is ready.
-    // No specific initialization needed here if Firebase is already set up globally.
-    // We can use it to perform any initial checks or setup if necessary.
+    if (window.FinanceDBLocal && typeof window.FinanceDBLocal.init === 'function') {
+      try {
+        await window.FinanceDBLocal.init();
+      } catch (e) {
+        console.warn("Inisialisasi database lokal mengalami masalah:", e);
+      }
+    }
     console.log("FinanceDB initialized.");
   },
 
   // Transactions
   addTransaction: async (userId, transaction) => {
+    const cleanTx = { ...transaction };
+    delete cleanTx.id;
     try {
-      const docRef = await db.collection('users').doc(userId).collection('transactions').add(transaction);
-      return { id: docRef.id, ...transaction };
+      const docRef = await db.collection('users').doc(String(userId)).collection('transactions').add(cleanTx);
+      return { ...cleanTx, id: docRef.id };
     } catch (error) {
-      console.error("Error adding transaction:", error);
+      console.warn("Firestore addTransaction gagal, mencoba menyimpan ke database lokal IndexedDB:", error);
+      if (window.FinanceDBLocal) {
+        return await window.FinanceDBLocal.addTransaction(userId, cleanTx);
+      }
       throw error;
     }
   },
 
   getTransactions: async (userId) => {
     try {
-      const snapshot = await db.collection('users').doc(userId).collection('transactions').orderBy('date', 'desc').get();
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const snapshot = await db.collection('users').doc(String(userId)).collection('transactions').orderBy('date', 'desc').get();
+      const items = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      if (window.FinanceDBLocal) {
+        const localItems = await window.FinanceDBLocal.getTransactions(userId).catch(() => []);
+        if (items.length === 0 && localItems.length > 0) return localItems;
+      }
+      return items;
     } catch (error) {
-      console.error("Error getting transactions:", error);
+      console.warn("Firestore getTransactions gagal, mengambil dari database lokal IndexedDB:", error);
+      if (window.FinanceDBLocal) {
+        return await window.FinanceDBLocal.getTransactions(userId);
+      }
       throw error;
     }
   },
 
   updateTransaction: async (userId, transactionId, updates) => {
+    const cleanUpdates = { ...updates };
+    delete cleanUpdates.id;
     try {
-      await db.collection('users').doc(userId).collection('transactions').doc(transactionId).update(updates);
+      await db.collection('users').doc(String(userId)).collection('transactions').doc(String(transactionId)).update(cleanUpdates);
+      return { ...cleanUpdates, id: transactionId };
     } catch (error) {
-      console.error("Error updating transaction:", error);
+      console.warn("Firestore updateTransaction gagal, memperbarui di database lokal IndexedDB:", error);
+      if (window.FinanceDBLocal) {
+        return await window.FinanceDBLocal.updateTransaction(userId, transactionId, cleanUpdates);
+      }
       throw error;
     }
   },
 
   deleteTransaction: async (userId, transactionId) => {
     try {
-      await db.collection('users').doc(userId).collection('transactions').doc(transactionId).delete();
+      await db.collection('users').doc(String(userId)).collection('transactions').doc(String(transactionId)).delete();
+      if (window.FinanceDBLocal) {
+        await window.FinanceDBLocal.deleteTransaction(userId, transactionId).catch(() => {});
+      }
+      return true;
     } catch (error) {
-      console.error("Error deleting transaction:", error);
+      console.warn("Firestore deleteTransaction gagal, menghapus di database lokal IndexedDB:", error);
+      if (window.FinanceDBLocal) {
+        return await window.FinanceDBLocal.deleteTransaction(userId, transactionId);
+      }
       throw error;
     }
   },
 
   // Budgets
   addBudget: async (userId, budget) => {
+    const cleanBudget = { ...budget };
+    delete cleanBudget.id;
     try {
-      const docRef = await db.collection('users').doc(userId).collection('budgets').add(budget);
-      return { id: docRef.id, ...budget };
+      const docRef = await db.collection('users').doc(String(userId)).collection('budgets').add(cleanBudget);
+      return { ...cleanBudget, id: docRef.id };
     } catch (error) {
-      console.error("Error adding budget:", error);
+      console.warn("Firestore addBudget gagal, mencoba ke database lokal IndexedDB:", error);
+      if (window.FinanceDBLocal) {
+        return await window.FinanceDBLocal.addBudget(userId, cleanBudget);
+      }
       throw error;
     }
   },
 
   getBudgets: async (userId) => {
     try {
-      const snapshot = await db.collection('users').doc(userId).collection('budgets').get();
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const snapshot = await db.collection('users').doc(String(userId)).collection('budgets').get();
+      const items = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      if (window.FinanceDBLocal) {
+        const localItems = await window.FinanceDBLocal.getBudgets(userId).catch(() => []);
+        if (items.length === 0 && localItems.length > 0) return localItems;
+      }
+      return items;
     } catch (error) {
-      console.error("Error getting budgets:", error);
+      console.warn("Firestore getBudgets gagal, mengambil dari database lokal IndexedDB:", error);
+      if (window.FinanceDBLocal) {
+        return await window.FinanceDBLocal.getBudgets(userId);
+      }
       throw error;
     }
   },
 
   deleteBudget: async (userId, budgetId) => {
     try {
-      await db.collection('users').doc(userId).collection('budgets').doc(budgetId).delete();
+      await db.collection('users').doc(String(userId)).collection('budgets').doc(String(budgetId)).delete();
+      if (window.FinanceDBLocal) {
+        await window.FinanceDBLocal.deleteBudget(userId, budgetId).catch(() => {});
+      }
+      return true;
     } catch (error) {
-      console.error("Error deleting budget:", error);
+      console.warn("Firestore deleteBudget gagal, menghapus di database lokal IndexedDB:", error);
+      if (window.FinanceDBLocal) {
+        return await window.FinanceDBLocal.deleteBudget(userId, budgetId);
+      }
       throw error;
     }
   },
 
   // Saving Goals
   addSavingGoal: async (userId, goal) => {
+    const cleanGoal = { ...goal };
+    delete cleanGoal.id;
     try {
-      const docRef = await db.collection('users').doc(userId).collection('savingGoals').add(goal);
-      return { id: docRef.id, ...goal };
+      const docRef = await db.collection('users').doc(String(userId)).collection('savingGoals').add(cleanGoal);
+      return { ...cleanGoal, id: docRef.id };
     } catch (error) {
-      console.error("Error adding saving goal:", error);
+      console.warn("Firestore addSavingGoal gagal, mencoba ke database lokal IndexedDB:", error);
+      if (window.FinanceDBLocal) {
+        return await window.FinanceDBLocal.addSavingGoal(userId, cleanGoal);
+      }
       throw error;
     }
   },
 
   getSavingGoals: async (userId) => {
     try {
-      const snapshot = await db.collection('users').doc(userId).collection('savingGoals').get();
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const snapshot = await db.collection('users').doc(String(userId)).collection('savingGoals').get();
+      const items = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      if (window.FinanceDBLocal) {
+        const localItems = await window.FinanceDBLocal.getSavingGoals(userId).catch(() => []);
+        if (items.length === 0 && localItems.length > 0) return localItems;
+      }
+      return items;
     } catch (error) {
-      console.error("Error getting saving goals:", error);
+      console.warn("Firestore getSavingGoals gagal, mengambil dari database lokal IndexedDB:", error);
+      if (window.FinanceDBLocal) {
+        return await window.FinanceDBLocal.getSavingGoals(userId);
+      }
       throw error;
     }
   },
 
   updateSavingGoal: async (userId, goalId, updates) => {
+    const cleanUpdates = { ...updates };
+    delete cleanUpdates.id;
     try {
-      await db.collection('users').doc(userId).collection('savingGoals').doc(goalId).update(updates);
+      await db.collection('users').doc(String(userId)).collection('savingGoals').doc(String(goalId)).update(cleanUpdates);
+      return { ...cleanUpdates, id: goalId };
     } catch (error) {
-      console.error("Error updating saving goal:", error);
+      console.warn("Firestore updateSavingGoal gagal, memperbarui di database lokal IndexedDB:", error);
+      if (window.FinanceDBLocal) {
+        return await window.FinanceDBLocal.updateSavingGoal(userId, goalId, cleanUpdates);
+      }
       throw error;
     }
   },
 
   deleteSavingGoal: async (userId, goalId) => {
     try {
-      await db.collection('users').doc(userId).collection('savingGoals').doc(goalId).delete();
+      await db.collection('users').doc(String(userId)).collection('savingGoals').doc(String(goalId)).delete();
+      if (window.FinanceDBLocal) {
+        await window.FinanceDBLocal.deleteSavingGoal(userId, goalId).catch(() => {});
+      }
+      return true;
     } catch (error) {
-      console.error("Error deleting saving goal:", error);
+      console.warn("Firestore deleteSavingGoal gagal, menghapus di database lokal IndexedDB:", error);
+      if (window.FinanceDBLocal) {
+        return await window.FinanceDBLocal.deleteSavingGoal(userId, goalId);
+      }
       throw error;
     }
   }
@@ -142,4 +210,5 @@ const FinanceDB = {
 
 // Expose to window object
 window.FinanceDB = FinanceDB;
+
 

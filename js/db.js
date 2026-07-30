@@ -530,4 +530,6 @@
 
   // Expose to window object
   window.FinanceDB = FinanceDB;
+  window.FinanceDBLocal = FinanceDB;
 })();
+

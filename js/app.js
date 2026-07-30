@@ -207,8 +207,9 @@ document.addEventListener('DOMContentLoaded', () => {
       resetTransactionForm();
     } catch (error) {
       console.error("Error adding/updating transaction:", error);
-      showToast('Gagal menyimpan transaksi.', 'danger');
+      showToast(`Gagal menyimpan transaksi: ${error.message || 'Terjadi kesalahan pada database.'}`, 'danger');
     }
+
   }
 
   async function deleteTransaction(txId) {
