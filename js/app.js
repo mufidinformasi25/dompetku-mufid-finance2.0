@@ -195,12 +195,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- Transaction Logic ---
   async function addOrUpdateTransaction(tx) {
     if (!currentUser) return;
+    const db = window.FinanceDB;
+    if (!db) { showToast('Database belum siap.', 'warning'); return; }
     try {
       if (tx.id) {
-        await FinanceDB.updateTransaction(currentUser.uid, tx.id, tx);
+        await db.updateTransaction(currentUser.uid, tx.id, tx);
         showToast('Transaksi berhasil diperbarui.', 'success');
       } else {
-        await FinanceDB.addTransaction(currentUser.uid, tx);
+        await db.addTransaction(currentUser.uid, tx);
         showToast('Transaksi berhasil ditambahkan.', 'success');
       }
       await loadAllData();
@@ -209,14 +211,15 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error("Error adding/updating transaction:", error);
       showToast(`Gagal menyimpan transaksi: ${error.message || 'Terjadi kesalahan pada database.'}`, 'danger');
     }
-
   }
 
   async function deleteTransaction(txId) {
     if (!currentUser) return;
     if (!confirm('Anda yakin ingin menghapus transaksi ini?')) return;
+    const db = window.FinanceDB;
+    if (!db) { showToast('Database belum siap.', 'warning'); return; }
     try {
-      await FinanceDB.deleteTransaction(currentUser.uid, txId);
+      await db.deleteTransaction(currentUser.uid, txId);
       showToast('Transaksi berhasil dihapus.', 'success');
       await loadAllData();
     } catch (error) {
@@ -653,20 +656,34 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- Master Data Load and UI Update ---
   async function loadAllData() {
     if (!currentUser) return;
+
+    // Pastikan FinanceDB tersedia sebelum memanggil operasi database
+    const db = window.FinanceDB;
+    if (!db) {
+      console.error("FinanceDB belum tersedia.");
+      showToast('Database belum siap. Coba refresh halaman.', 'warning');
+      return;
+    }
+
     try {
-      transactions = await FinanceDB.getTransactions(currentUser.uid);
-      budgets = await FinanceDB.getBudgets(currentUser.uid);
-      savingGoals = await FinanceDB.getSavingGoals(currentUser.uid);
+      transactions = await db.getTransactions(currentUser.uid);
+      budgets = await db.getBudgets(currentUser.uid);
+      savingGoals = await db.getSavingGoals(currentUser.uid);
 
       updateKPIs();
       renderTransactionTable();
       renderBudgets();
       renderSavingGoals();
       renderCharts();
-      populateCategoryFilters(); // Ensure filters are populated
+      populateCategoryFilters();
     } catch (error) {
       console.error("Error loading all data:", error);
-      showToast('Gagal memuat data.', 'danger');
+      // Jangan tampilkan toast error jika data kosong (bukan error kritis)
+      if (error.message && error.message !== 'Database lokal tidak tersedia.') {
+        showToast(`Gagal memuat data: ${error.message}`, 'danger');
+      } else if (!error.message) {
+        showToast('Gagal memuat data.', 'danger');
+      }
     }
   }
 

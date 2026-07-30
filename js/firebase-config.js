@@ -1,8 +1,7 @@
 /**
  * firebase-config.js
- * Konfigurasi asli Firebase.
- *
- * PENTING: Ganti konfigurasi di bawah ini dengan config dari Firebase Console Anda!
+ * Konfigurasi Firebase — hanya Auth yang diinisialisasi di sini.
+ * Firestore dikelola terpisah di firebase-db.js untuk menghindari konflik deklarasi variabel.
  */
 
 const firebaseConfig = {
@@ -20,17 +19,3 @@ if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
 
-// Inisialisasi service agar siap dipakai di file lain
-const auth = firebase.auth();
-const db = firebase.firestore();
-
-// Aktifkan mode offline sementara (opsional) agar saat offline data masih bisa diakses
-db.enablePersistence().catch((err) => {
-  if (err.code == "failed-precondition") {
-    // Multiple tabs open, persistence can only be cleared in one tab at a a time.
-    console.warn("Multiple tabs open, persistence failed.");
-  } else if (err.code == "unimplemented") {
-    // The current browser does not support all of the features required to enable persistence
-    console.warn("Browser tidak mendukung persistence offline.");
-  }
-});
