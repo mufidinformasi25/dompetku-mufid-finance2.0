@@ -139,3 +139,7 @@ const FinanceDB = {
     }
   }
 };
+
+// Expose to window object
+window.FinanceDB = FinanceDB;
+

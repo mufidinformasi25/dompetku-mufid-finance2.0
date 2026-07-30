@@ -1,4 +1,4 @@
-﻿/**
+/**
  * app.js - Personal Finance Manager Application Logic
  * Integrates UI interaction, IndexedDB data operations, Chart.js, and budget checking.
  */
@@ -821,13 +821,17 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   // --------------------------
 
-  // Initialize Firebase and load initial data
-  FinanceDB.init().then(() => {
-    // No setupAuthListener here, it's handled by the onAuthStateChanged at the top
-  }).catch((err) => {
-    console.error(err);
-    showToast('Gagal membuka database lokal. Coba refresh halaman.', 'danger');
-  });
+  // Initialize Database and load initial data
+  const dbObj = window.FinanceDB || (typeof FinanceDB !== 'undefined' ? FinanceDB : null);
+  if (dbObj && typeof dbObj.init === 'function') {
+    dbObj.init().then(() => {
+      // No setupAuthListener here, it's handled by the onAuthStateChanged at the top
+    }).catch((err) => {
+      console.error(err);
+      showToast('Gagal membuka database.', 'danger');
+    });
+  }
+
 
 });
 

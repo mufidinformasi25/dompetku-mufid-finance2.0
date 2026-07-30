@@ -53,13 +53,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   const loginSubmitBtn = loginForm ? loginForm.querySelector('button[type="submit"]') : null;
   const registerSubmitBtn = registerForm ? registerForm.querySelector('button[type="submit"]') : null;
 
-  // --- STEP 1: Pastikan IndexedDB siap dulu sebelum cek auth ---
+  // --- STEP 1: Inisialisasi database jika tersedia ---
   try {
-    await window.FinanceDB.init();
+    const dbObj = window.FinanceDB || (typeof FinanceDB !== 'undefined' ? FinanceDB : null);
+    if (dbObj && typeof dbObj.init === 'function') {
+      await dbObj.init();
+    }
   } catch (err) {
     console.error('Gagal inisialisasi database:', err);
-    showToast('Gagal membuka database lokal. Coba refresh halaman.', 'danger');
-    return;
   }
 
   // --- STEP 2: Cek status login, tampilkan form jika belum login ---
@@ -107,6 +108,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  // Helper untuk pesan error Firebase
+  function getFriendlyAuthError(error) {
+    if (!error || !error.code) return error.message || 'Terjadi kesalahan.';
+    switch (error.code) {
+      case 'auth/user-not-found':
+      case 'auth/wrong-password':
+      case 'auth/invalid-credential':
+        return 'Username/email atau password salah.';
+      case 'auth/email-already-in-use':
+        return 'Username/email ini sudah terdaftar.';
+      case 'auth/weak-password':
+        return 'Password terlalu lemah (minimal 6 karakter).';
+      case 'auth/invalid-email':
+        return 'Format email atau username tidak valid.';
+      default:
+        return error.message;
+    }
+  }
+
   // --- Handle Login Form ---
   if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
@@ -119,14 +139,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
       }
 
+      const email = username.includes('@') ? username : `${username}@dompetku.local`;
+
       setLoading(loginSubmitBtn, true);
       try {
-        await firebase.auth().signInWithEmailAndPassword(username, password);
+        await firebase.auth().signInWithEmailAndPassword(email, password);
         showToast('Login berhasil! Mengalihkan...', 'success');
         // Redirect ditangani oleh onAuthStateChanged
       } catch (error) {
         console.error('Login error:', error);
-        showToast(`Login gagal: ${error.message}`, 'danger');
+        showToast(`Login gagal: ${getFriendlyAuthError(error)}`, 'danger');
         setLoading(loginSubmitBtn, false);
       }
     });
@@ -153,14 +175,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
       }
 
+      const email = username.includes('@') ? username : `${username}@dompetku.local`;
+
       setLoading(registerSubmitBtn, true);
       try {
-        await firebase.auth().createUserWithEmailAndPassword(username, password);
+        const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
+        if (userCredential.user && !userCredential.user.displayName) {
+          await userCredential.user.updateProfile({ displayName: username });
+        }
         showToast('Pendaftaran berhasil! Mengalihkan...', 'success');
         // Redirect ditangani oleh onAuthStateChanged
       } catch (error) {
         console.error('Register error:', error);
-        showToast(`Pendaftaran gagal: ${error.message}`, 'danger');
+        showToast(`Pendaftaran gagal: ${getFriendlyAuthError(error)}`, 'danger');
         setLoading(registerSubmitBtn, false);
       }
     });
@@ -176,7 +203,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Redirect ditangani oleh onAuthStateChanged
     } catch (error) {
       console.error('Google sign-in error:', error);
-      showToast(`Login Google gagal: ${error.message}`, 'danger');
+      showToast(`Login Google gagal: ${getFriendlyAuthError(error)}`, 'danger');
       setLoading(btn, false);
     }
   }
