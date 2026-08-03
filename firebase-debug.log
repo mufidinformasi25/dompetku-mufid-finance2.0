@@ -1,0 +1,89 @@
+[debug] [2026-08-03T22:42:25.357Z] ----------------------------------------------------------------------
+[debug] [2026-08-03T22:42:25.361Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\mufid_iq1vcdn\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js emulators:start --only functions firestore
+[debug] [2026-08-03T22:42:25.361Z] CLI Version:   15.25.1
+[debug] [2026-08-03T22:42:25.361Z] Platform:      win32
+[debug] [2026-08-03T22:42:25.361Z] Node Version:  v24.18.0
+[debug] [2026-08-03T22:42:25.362Z] Detected Agent: unknown
+[debug] [2026-08-03T22:42:25.362Z] Time:          Tue Aug 04 2026 05:42:25 GMT+0700 (Western Indonesia Time)
+[debug] [2026-08-03T22:42:25.362Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-03T22:42:27.969Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-03T22:42:27.969Z] > authorizing via signed-in user (filmfeezy@gmail.com)
+[info] i  emulators: Starting emulators: functions {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: functions"}}
+[warn] !  firestore: Not starting the firestore emulator, make sure you have run firebase init. {"metadata":{"emulator":{"name":"firestore"},"message":"Not starting the \u001b[1mfirestore\u001b[22m emulator, make sure you have run \u001b[1mfirebase init\u001b[22m."}}
+[debug] [2026-08-03T22:42:27.989Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-08-03T22:42:27.989Z] assigned listening specs for emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000},{"address":"::1","family":"IPv6","port":4000}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2026-08-03T22:42:27.998Z] Write emulator hub locator at C:\Users\MUFID_~1\AppData\Local\Temp\hub-dompetku-finance-e63a9.json
+[debug] [2026-08-03T22:42:28.028Z] [functions] Functions Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-08-03T22:42:28.029Z] [eventarc] Eventarc Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-08-03T22:42:28.029Z] [tasks] Cloud Tasks Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-08-03T22:42:28.029Z] late-assigned ports for functions and eventarc emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000},{"address":"::1","family":"IPv6","port":4000}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}],"functions":[{"address":"127.0.0.1","family":"IPv4","port":5001}],"eventarc":[{"address":"127.0.0.1","family":"IPv4","port":9299}],"tasks":[{"address":"127.0.0.1","family":"IPv4","port":9499}]},"metadata":{"message":"late-assigned ports for functions and eventarc emulators"}}
+[warn] !  functions: The following emulators are not running, calls to these services from the Functions emulator will affect production: apphosting, auth, firestore, database, hosting, pubsub, storage, dataconnect {"metadata":{"emulator":{"name":"functions"},"message":"The following emulators are not running, calls to these services from the Functions emulator will affect production: \u001b[1mapphosting, auth, firestore, database, hosting, pubsub, storage, dataconnect\u001b[22m"}}
+[debug] [2026-08-03T22:42:28.086Z] defaultcredentials: writing to file C:\Users\mufid_iq1vcdn\AppData\Roaming\firebase\filmfeezy_gmail_com_application_default_credentials.json
+[debug] [2026-08-03T22:42:28.090Z] Setting GAC to C:\Users\mufid_iq1vcdn\AppData\Roaming\firebase\filmfeezy_gmail_com_application_default_credentials.json {"metadata":{"emulator":{"name":"functions"},"message":"Setting GAC to C:\\Users\\mufid_iq1vcdn\\AppData\\Roaming\\firebase\\filmfeezy_gmail_com_application_default_credentials.json"}}
+[debug] [2026-08-03T22:42:28.093Z] Checked if tokens are valid: true, expires at: 1785799980500
+[debug] [2026-08-03T22:42:28.093Z] Checked if tokens are valid: true, expires at: 1785799980500
+[debug] [2026-08-03T22:42:28.096Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/dompetku-finance-e63a9/adminSdkConfig [none]
+[debug] [2026-08-03T22:42:28.543Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/dompetku-finance-e63a9/adminSdkConfig 200
+[debug] [2026-08-03T22:42:28.544Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/dompetku-finance-e63a9/adminSdkConfig {"projectId":"dompetku-finance-e63a9","storageBucket":"dompetku-finance-e63a9.firebasestorage.app"}
+[info] i  functions: Watching "D:\DompetLKU_by Mufid_2.0\functions" for Cloud Functions... {"metadata":{"emulator":{"name":"functions"},"message":"Watching \"D:\\DompetLKU_by Mufid_2.0\\functions\" for Cloud Functions..."}}
+[debug] [2026-08-03T22:42:28.602Z] Validating nodejs source
+[debug] [2026-08-03T22:42:30.830Z] > [functions] package.json contents: {
+  "name": "functions",
+  "description": "Cloud Functions for Firebase",
+  "scripts": {
+    "lint": "eslint .",
+    "serve": "firebase emulators:start --only functions",
+    "shell": "firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "24"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "@firebase/app": "^0.16.0",
+    "@firebase/database-compat": "^2.1.5",
+    "firebase": "^12.17.0",
+    "firebase-admin": "^13.10.0",
+    "firebase-functions": "^7.3.2",
+    "googleapis": "^173.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.15.0",
+    "eslint-config-google": "^0.14.0",
+    "firebase-functions-test": "^3.4.1"
+  },
+  "private": true
+}
+[debug] [2026-08-03T22:42:30.830Z] Building nodejs source
+[debug] [2026-08-03T22:42:30.831Z] Failed to find version of module node: reached end of search path D:\DompetLKU_by Mufid_2.0\functions\node_modules
+[info] +  functions: Using node@24 from host. 
+[debug] [2026-08-03T22:42:30.836Z] Could not find functions.yaml. Must use http discovery
+[debug] [2026-08-03T22:42:30.850Z] Found firebase-functions binary at 'D:\DompetLKU_by Mufid_2.0\functions\node_modules\.bin\firebase-functions'
+[info] Serving at port 8884
+
+[debug] [2026-08-03T22:42:34.595Z] Got response from /__/functions.yaml {"endpoints":{"addTransactionToSheet":{"platform":"gcfv1","availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"eventTrigger":{"eventType":"providers/cloud.firestore/eventTypes/document.create","eventFilters":{"resource":"projects/{{ params.PROJECT_ID }}/databases/(default)/documents/users/{userId}/transactions/{transactionId}"},"retry":false},"labels":{},"entryPoint":"addTransactionToSheet"},"updateTransactionInSheet":{"platform":"gcfv1","availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"eventTrigger":{"eventType":"providers/cloud.firestore/eventTypes/document.update","eventFilters":{"resource":"projects/{{ params.PROJECT_ID }}/databases/(default)/documents/users/{userId}/transactions/{transactionId}"},"retry":false},"labels":{},"entryPoint":"updateTransactionInSheet"},"deleteTransactionFromSheet":{"platform":"gcfv1","availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"eventTrigger":{"eventType":"providers/cloud.firestore/eventTypes/document.delete","eventFilters":{"resource":"projects/{{ params.PROJECT_ID }}/databases/(default)/documents/users/{userId}/transactions/{transactionId}"},"retry":false},"labels":{},"entryPoint":"deleteTransactionFromSheet"}},"specVersion":"v1alpha1","requiredAPIs":[],"extensions":{}}
+[info] +  functions: Loaded functions definitions from source: addTransactionToSheet, updateTransactionInSheet, deleteTransactionFromSheet. {"metadata":{"emulator":{"name":"functions"},"message":"Loaded functions definitions from source: addTransactionToSheet, updateTransactionInSheet, deleteTransactionFromSheet."}}
+[info] i  functions[us-central1-addTransactionToSheet]: function ignored because the firestore emulator does not exist or is not running. {"metadata":{"emulator":{"name":"functions"},"message":"function ignored because the firestore emulator does not exist or is not running."}}
+[info] i  functions[us-central1-updateTransactionInSheet]: function ignored because the firestore emulator does not exist or is not running. {"metadata":{"emulator":{"name":"functions"},"message":"function ignored because the firestore emulator does not exist or is not running."}}
+[info] i  functions[us-central1-deleteTransactionFromSheet]: function ignored because the firestore emulator does not exist or is not running. {"metadata":{"emulator":{"name":"functions"},"message":"function ignored because the firestore emulator does not exist or is not running."}}
+[debug] [2026-08-03T22:42:37.699Z] Could not find VSCode notification endpoint: TypeError: fetch failed. If you are not running the Firebase SQL Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+│ i  View Emulator UI at http://127.0.0.1:4000/               │
+└─────────────────────────────────────────────────────────────┘
+
+┌───────────┬────────────────┬─────────────────────────────────┐
+│ Emulator  │ Host:Port      │ View in Emulator UI             │
+├───────────┼────────────────┼─────────────────────────────────┤
+│ Functions │ 127.0.0.1:5001 │ http://127.0.0.1:4000/functions │
+└───────────┴────────────────┴─────────────────────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 
